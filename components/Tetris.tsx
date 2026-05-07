@@ -257,7 +257,7 @@ const TetrisGame = () => {
         return;
       }
       if (e.code === 'KeyC' || e.code === 'ShiftLeft') { handleHold(); return; }
-      if (e.code === 'KeyP') { setGameState('PAUSED'); return; }
+      if (e.code === 'Escape') { setGameState('PAUSED'); return; }
       if (e.code === 'Enter' && gameState !== 'PLAYING' && gameState !== 'PAUSED') { startGame(); return; }
 
       // Held keys
@@ -395,7 +395,7 @@ const TetrisGame = () => {
           <div>Up: Rotate</div>
           <div>Space: Drop</div>
           <div>C: Hold</div>
-          <div>P: Pause</div>
+          <div>P: Esc</div>
         </div>
       </div>
     </div>
