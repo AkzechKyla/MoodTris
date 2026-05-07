@@ -14,7 +14,7 @@ export type EmotionScores = {
 
 export function useEmotionDetection(
   enabled: boolean,
-  videoElRef: React.RefObject<HTMLVideoElement>,
+  videoElRef: React.RefObject<HTMLVideoElement | null>,
 ) {
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
