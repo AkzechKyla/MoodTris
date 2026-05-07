@@ -314,14 +314,14 @@ const TetrisGame = () => {
               // First frame key is held — move immediately
               if (code === 'ArrowLeft') tryMove(-1, 0);
               else if (code === 'ArrowRight') tryMove(1, 0);
-              else if (code === 'ArrowDown') { tryMove(0, 1); setScore(s => s + 1); }
+              else if (code === 'ArrowDown') { tryMove(0, 1); }
               keyTimers.set(code, { last: time, started: time });
             } else {
               const elapsed = time - timer.started;
               if (elapsed >= moveRepeatDelay && time - timer.last >= moveRepeatInterval) {
                 if (code === 'ArrowLeft') tryMove(-1, 0);
                 else if (code === 'ArrowRight') tryMove(1, 0);
-                else if (code === 'ArrowDown') { tryMove(0, 1); setScore(s => s + 1); }
+                else if (code === 'ArrowDown') { tryMove(0, 1); }
                 keyTimers.set(code, { ...timer, last: time });
               }
             }
