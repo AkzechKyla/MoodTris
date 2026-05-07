@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
+import { useEmotionDetection } from '@/hooks/useEmotionDetection';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -16,6 +17,8 @@ const TetrisGame = () => {
     'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'
   >('IDLE');
   const [countdown, setCountdown] = useState(3);
+  const [emotionEnabled, setEmotionEnabled] = useState(false);
+  const { emotionState, ready, error } = useEmotionDetection(emotionEnabled);
 
   // Ref-based state to prevent closure issues in the game loop
   const boardRef = useRef(
@@ -26,6 +29,7 @@ const TetrisGame = () => {
   const heldPieceRef = useRef<any>(null);
   const canHoldRef = useRef(true);
   const dropIntervalRef = useRef(1000);
+  const baseDropIntervalRef = useRef(1000);
   const lastTimeRef = useRef(0);
   const dropCounterRef = useRef(0);
 
@@ -206,7 +210,9 @@ const TetrisGame = () => {
         const total = l + cleared;
         const newLevel = Math.floor(total / 10) + 1;
         setLevel(newLevel);
-        dropIntervalRef.current = Math.max(50, 1000 - (newLevel - 1) * 90);
+        const base = Math.max(50, 1000 - (newLevel - 1) * 90);
+        baseDropIntervalRef.current = base;
+        dropIntervalRef.current = base;
         return total;
       });
       boardRef.current = newBoard;
@@ -351,6 +357,20 @@ const TetrisGame = () => {
     return () => clearInterval(interval);
   }, [gameState]);
 
+  useEffect(() => {
+    const base = baseDropIntervalRef.current;
+    if (emotionState === 'stressed') {
+      // slow down by 40% as mercy
+      dropIntervalRef.current = Math.min(base * 1.4, 1500);
+    } else if (emotionState === 'disengaged') {
+      // speed up slightly to re-engage
+      dropIntervalRef.current = Math.max(base * 0.85, 50);
+    } else {
+      // calm or unknown — restore base speed
+      dropIntervalRef.current = base;
+    }
+  }, [emotionState]);
+
   // --- Game Loop ---
   useEffect(() => {
     let raf: number;
@@ -420,6 +440,7 @@ const TetrisGame = () => {
     setLines(0);
     setLevel(1);
     dropIntervalRef.current = 1000;
+    baseDropIntervalRef.current = 1000;
     spawnPiece();
     setGameState('PLAYING');
   };
@@ -446,6 +467,52 @@ const TetrisGame = () => {
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
           <div className="text-[10px] text-gray-500 mb-1 uppercase">Level</div>
           <div className="text-sm text-white">{level}</div>
+        </div>
+        {/* Emotion Awareness Toggle */}
+        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
+          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
+            Mood
+          </div>
+          <button
+            onClick={() => setEmotionEnabled((e) => !e)}
+            className={`w-full text-[10px] py-1 border transition ${
+              emotionEnabled
+                ? 'border-green-500 text-green-400 hover:bg-green-500/10'
+                : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
+            }`}
+          >
+            {emotionEnabled ? 'ON' : 'OFF'}
+          </button>
+
+          {emotionEnabled && (
+            <div className="mt-2 text-[9px] leading-relaxed">
+              {error && <div className="text-red-400">{error}</div>}
+              {!ready && !error && (
+                <div className="text-gray-600 animate-pulse">Loading...</div>
+              )}
+              {ready && (
+                <div
+                  className={`font-bold uppercase tracking-wider ${
+                    emotionState === 'stressed'
+                      ? 'text-blue-400'
+                      : emotionState === 'disengaged'
+                        ? 'text-yellow-400'
+                        : emotionState === 'calm'
+                          ? 'text-green-400'
+                          : 'text-gray-500'
+                  }`}
+                >
+                  {emotionState === 'stressed'
+                    ? '😰 Slowing'
+                    : emotionState === 'disengaged'
+                      ? '😑 Speeding'
+                      : emotionState === 'calm'
+                        ? '😊 Normal'
+                        : '...'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
