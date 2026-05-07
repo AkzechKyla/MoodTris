@@ -1,26 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323:wght@400&display=swap');
 @import 'tailwindcss';
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #020b04;
+  --panel: #0a1a0c;
+  --border: #1a4d1e;
+  --glow-green: #00ff41;
+  --glow-dim: #00802a;
+  --glow-red: #ff3131;
+  --glow-yellow: #ffd700;
+  --text-bright: #e0ffe8;
+  --text-dim: #4a7a50;
+  --scanline: rgba(0, 0, 0, 0.25);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  box-sizing: border-box;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text-bright);
+  font-family: 'Press Start 2P', monospace;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* CRT scanlines overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    var(--scanline) 0px,
+    var(--scanline) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* CRT screen curvature vignette */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+    ellipse at center,
+    transparent 60%,
+    rgba(0, 0, 0, 0.85) 100%
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* Phosphor flicker animation */
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.85;
+  }
+  94% {
+    opacity: 1;
+  }
+  96% {
+    opacity: 0.9;
+  }
+  97% {
+    opacity: 1;
+  }
+}
+
+@keyframes glow-pulse {
+  0%,
+  100% {
+    text-shadow:
+      0 0 8px var(--glow-green),
+      0 0 20px var(--glow-green);
+  }
+  50% {
+    text-shadow:
+      0 0 4px var(--glow-green),
+      0 0 10px var(--glow-green);
+  }
+}
+
+@keyframes blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+
+.crt {
+  animation: flicker 8s infinite;
+}
+
+.glow-text {
+  color: var(--glow-green);
+  text-shadow:
+    0 0 8px var(--glow-green),
+    0 0 20px var(--glow-green),
+    0 0 40px var(--glow-dim);
+}
+
+.glow-text-animate {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+.glow-border {
+  border-color: var(--border);
+  box-shadow:
+    0 0 8px rgba(0, 255, 65, 0.15),
+    inset 0 0 8px rgba(0, 255, 65, 0.05);
+}
+
+.glow-border-bright {
+  border-color: var(--glow-green);
+  box-shadow:
+    0 0 12px rgba(0, 255, 65, 0.4),
+    inset 0 0 12px rgba(0, 255, 65, 0.1);
+}
+
+.pixel-panel {
+  background: var(--panel);
+  border: 2px solid var(--border);
+  box-shadow:
+    0 0 8px rgba(0, 255, 65, 0.1),
+    inset 0 0 8px rgba(0, 255, 65, 0.03);
+}
+
+.blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* VT323 for score numbers — more readable at small sizes */
+.vt {
+  font-family: 'VT323', monospace;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
 }

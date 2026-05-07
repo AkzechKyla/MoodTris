@@ -452,11 +452,11 @@ const TetrisGame = () => {
   };
 
   return (
-    <div className="flex items-start gap-4 font-mono select-none">
+    <div className="flex items-start gap-3 select-none">
       {/* Left Panel */}
-      <div className="flex flex-col gap-4 w-28">
-        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">
+      <div className="flex flex-col gap-3 w-32">
+        <div className="pixel-panel p-2">
+          <div className="text-[7px] text-[#4a7a50] mb-2 uppercase tracking-widest glow-text">
             Hold
           </div>
           <canvas
@@ -468,7 +468,12 @@ const TetrisGame = () => {
         </div>
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
           <div className="text-[10px] text-gray-500 mb-1 uppercase">Score</div>
-          <div className="text-sm text-white">{score}</div>
+          <div
+            className="vt text-2xl text-[#00ff41]"
+            style={{ textShadow: '0 0 8px #00ff41' }}
+          >
+            {score}
+          </div>
         </div>
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
           <div className="text-[10px] text-gray-500 mb-1 uppercase">
@@ -476,47 +481,74 @@ const TetrisGame = () => {
           </div>
           <div className="text-sm text-white">{level}</div>
         </div>
-        <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
-          <div>Arrows: Move</div>
-          <div>Up: Rotate</div>
-          <div>Space: Drop</div>
-          <div>C or Left Shift: Hold</div>
-          <div>Escape: Pause/Restart</div>
+        <div className="text-[6px] text-[#1a4d1e] space-y-2 uppercase leading-relaxed tracking-wider">
+          <div>
+            ← → <span className="text-[#4a7a50]">MOVE</span>
+          </div>
+          <div>
+            ↑ <span className="text-[#4a7a50]">ROTATE</span>
+          </div>
+          <div>
+            ↓ <span className="text-[#4a7a50]">SOFT DROP</span>
+          </div>
+          <div>
+            SPC <span className="text-[#4a7a50]">HARD DROP</span>
+          </div>
+          <div>
+            C <span className="text-[#4a7a50]">HOLD</span>
+          </div>
+          <div>
+            ESC <span className="text-[#4a7a50]">PAUSE</span>
+          </div>
         </div>
       </div>
 
       {/* Center Game Board */}
-      <div className="relative border-[3px] border-[#555] bg-black shadow-2xl">
+      <div className="relative glow-border-bright border-2">
         <canvas ref={canvasRef} width={200} height={400} />
 
         {gameState !== 'PLAYING' && (
-          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-4">
+          <div className="absolute inset-0 bg-[#020b04]/90 flex flex-col items-center justify-center text-center p-4">
             {gameState === 'IDLE' && (
               <>
-                <h1 className="text-2xl font-bold mb-6 tracking-tighter">
-                  TETRIS
-                </h1>
+                <div className="glow-text glow-text-animate text-xl tracking-widest mb-2">
+                  MOODTRIS
+                </div>
+                <div className="text-[7px] text-[#4a7a50] mb-8 tracking-widest">
+                  EMOTION-AWARE TETRIS
+                </div>
                 <button
                   onClick={startGame}
-                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
+                  className="text-[9px] border-2 border-[#00ff41] text-[#00ff41] px-6 py-3 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest"
+                  style={{ boxShadow: '0 0 12px rgba(0,255,65,0.4)' }}
                 >
-                  START
+                  PRESS START
                 </button>
+                <div className="text-[6px] text-[#1a4d1e] mt-4 blink">
+                  OR PRESS ENTER
+                </div>
               </>
             )}
             {gameState === 'PAUSED' && (
               <>
-                <h1 className="text-xl font-bold mb-6">PAUSED</h1>
-                <div className="flex flex-col gap-4 w-3/4">
+                <div className="glow-text text-lg mb-2 tracking-widest">
+                  PAUSED
+                </div>
+                <div className="text-[6px] text-[#4a7a50] mb-8 tracking-widest blink">
+                  GAME SUSPENDED
+                </div>
+                <div className="flex flex-col gap-4 w-3/4 items-center">
                   <button
                     onClick={() => setGameState('RESUMING')}
-                    className="border-2 border-white px-4 py-2 hover:bg-white hover:text-black transition"
+                    className="w-full text-[9px] border-2 border-[#00ff41] text-[#00ff41] px-6 py-3 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest"
+                    style={{ boxShadow: '0 0 12px rgba(0,255,65,0.4)' }}
                   >
                     RESUME
                   </button>
                   <button
                     onClick={startGame}
-                    className="border-2 border-red-500 text-red-500 px-4 py-2 hover:bg-red-500 hover:text-white transition"
+                    className="w-full text-[9px] border-2 border-[#ff3131] text-[#ff3131] px-6 py-3 hover:bg-[#ff3131] hover:text-white transition tracking-widest"
+                    style={{ boxShadow: '0 0 12px rgba(255,49,49,0.4)' }}
                   >
                     RESTART
                   </button>
@@ -525,22 +557,41 @@ const TetrisGame = () => {
             )}
             {gameState === 'RESUMING' && (
               <>
-                <h1 className="text-6xl font-bold text-white animate-pulse">
+                <div className="text-[9px] text-[#4a7a50] mb-4 tracking-widest">
+                  RESUMING IN
+                </div>
+                <div className="vt text-8xl glow-text glow-text-animate">
                   {countdown}
-                </h1>
+                </div>
               </>
             )}
             {gameState === 'GAMEOVER' && (
               <>
-                <h1 className="text-xl font-bold text-red-500 mb-2">
+                <div
+                  className="text-lg tracking-widest mb-1"
+                  style={{
+                    color: 'var(--glow-red)',
+                    textShadow: '0 0 12px #ff3131',
+                  }}
+                >
                   GAME OVER
-                </h1>
-                <p className="text-xs text-gray-400 mb-6">
-                  FINAL SCORE: {score}
-                </p>
+                </div>
+                <div className="text-[6px] text-[#4a7a50] mb-2 tracking-widest">
+                  FINAL SCORE
+                </div>
+                <div
+                  className="vt text-4xl mb-8"
+                  style={{
+                    color: 'var(--glow-yellow)',
+                    textShadow: '0 0 12px #ffd700',
+                  }}
+                >
+                  {score}
+                </div>
                 <button
                   onClick={startGame}
-                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
+                  className="text-[9px] border-2 border-[#00ff41] text-[#00ff41] px-6 py-3 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest"
+                  style={{ boxShadow: '0 0 12px rgba(0,255,65,0.4)' }}
                 >
                   TRY AGAIN
                 </button>
@@ -566,10 +617,10 @@ const TetrisGame = () => {
       </div>
 
       {/* Far Right Panel */}
-      <div className="flex flex-col gap-4 w-40">
+      <div className="flex flex-col gap-4 w-40 min-h-[400px]">
         {/* Emotion Awareness Toggle */}
-        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="flex items-center justify-between">
+        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2 flex-1 flex flex-col">
+          <div className="flex items-center justify-between mb-2">
             <div className="text-[10px] text-gray-500 uppercase tracking-widest">
               Mood
             </div>
@@ -585,8 +636,15 @@ const TetrisGame = () => {
             </button>
           </div>
 
-          {emotionEnabled && (
-            <div className="mt-2 text-[9px] leading-relaxed">
+          {!emotionEnabled ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 space-y-2 mt-4 pt-4 border-t border-[#333]">
+              <div className="text-[8px] text-gray-400 tracking-widest">AWAITING MOOD CAM</div>
+              <div className="text-[6px] text-gray-500 leading-relaxed px-2">
+                ENABLE TO DYNAMICALLY ADJUST SPEED BASED ON YOUR FACIAL EXPRESSIONS.
+              </div>
+            </div>
+          ) : (
+            <div className="text-[9px] leading-relaxed flex-1">
               {error && <div className="text-red-400">{error}</div>}
               {!ready && !error && (
                 <div className="text-gray-600 animate-pulse">Loading...</div>
@@ -705,8 +763,8 @@ const TetrisGame = () => {
           )}
         </div>
 
-        {emotionEnabled && (
-          <div className="bg-[#1a1a1a] border-2 border-[#444] overflow-hidden">
+        <div className="bg-[#1a1a1a] border-2 border-[#444] overflow-hidden flex items-center justify-center min-h-[90px]">
+          {emotionEnabled ? (
             <video
               ref={videoElRef}
               autoPlay
@@ -714,8 +772,10 @@ const TetrisGame = () => {
               playsInline
               className="w-full scale-x-[-1]"
             />
-          </div>
-        )}
+          ) : (
+            <div className="text-[6px] text-[#333] tracking-widest">CAMERA OFFLINE</div>
+          )}
+        </div>
       </div>
     </div>
   );
