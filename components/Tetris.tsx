@@ -12,7 +12,8 @@ const TetrisGame = () => {
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
   const [level, setLevel] = useState(1);
-  const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'PAUSED' | 'GAMEOVER'>('IDLE');
+  const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'>('IDLE');
+  const [countdown, setCountdown] = useState(3);
   
   // Ref-based state to prevent closure issues in the game loop
   const boardRef = useRef(Array.from({ length: ROWS }, () => Array(COLS).fill(0)));
@@ -276,6 +277,23 @@ const TetrisGame = () => {
     };
   }, [gameState, tryMove, handleHold, placePiece]);
 
+  // --- Pause/Resume Countdown ---
+  useEffect(() => {
+    if (gameState !== 'RESUMING') return;
+    setCountdown(3);
+    const interval = setInterval(() => {
+      setCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setGameState('PLAYING');
+          return 3;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameState]);
+
   // --- Game Loop ---
   useEffect(() => {
     let raf: number;
@@ -370,7 +388,12 @@ const TetrisGame = () => {
             {gameState === 'PAUSED' && (
               <>
                 <h1 className="text-xl font-bold mb-6">PAUSED</h1>
-                <button onClick={() => setGameState('PLAYING')} className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition">RESUME</button>
+                <button onClick={() => setGameState('RESUMING')} className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition">RESUME</button>
+              </>
+            )}
+            {gameState === 'RESUMING' && (
+              <>
+                <h1 className="text-6xl font-bold text-white animate-pulse">{countdown}</h1>
               </>
             )}
             {gameState === 'GAMEOVER' && (
