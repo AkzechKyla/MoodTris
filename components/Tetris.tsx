@@ -19,7 +19,7 @@ const TetrisGame = () => {
   >('IDLE');
   const [countdown, setCountdown] = useState(3);
   const [emotionEnabled, setEmotionEnabled] = useState(false);
-  const { emotionState, ready, error } = useEmotionDetection(
+  const { emotionState, emotionScores, ready, error } = useEmotionDetection(
     emotionEnabled,
     videoElRef,
   );
@@ -553,21 +553,27 @@ const TetrisGame = () => {
             className="w-full bg-black/20"
           />
         </div>
+      </div>
+
+      {/* Far Right Panel */}
+      <div className="flex flex-col gap-4 w-40">
         {/* Emotion Awareness Toggle */}
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
-            Mood
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest">
+              Mood
+            </div>
+            <button
+              onClick={() => setEmotionEnabled((e) => !e)}
+              className={`px-2 py-0.5 text-[10px] border transition ${
+                emotionEnabled
+                  ? 'border-green-500 text-green-400 hover:bg-green-500/10'
+                  : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
+              }`}
+            >
+              {emotionEnabled ? 'ON' : 'OFF'}
+            </button>
           </div>
-          <button
-            onClick={() => setEmotionEnabled((e) => !e)}
-            className={`w-full text-[10px] py-1 border transition ${
-              emotionEnabled
-                ? 'border-green-500 text-green-400 hover:bg-green-500/10'
-                : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
-            }`}
-          >
-            {emotionEnabled ? 'ON' : 'OFF'}
-          </button>
 
           {emotionEnabled && (
             <div className="mt-2 text-[9px] leading-relaxed">
@@ -576,25 +582,114 @@ const TetrisGame = () => {
                 <div className="text-gray-600 animate-pulse">Loading...</div>
               )}
               {ready && (
-                <div
-                  className={`font-bold uppercase tracking-wider ${
-                    emotionState === 'stressed'
-                      ? 'text-blue-400'
+                <>
+                  {/* Current classified state + what it does to level */}
+                  <div
+                    className={`font-bold uppercase tracking-wider mb-2 ${
+                      emotionState === 'stressed'
+                        ? 'text-blue-400'
+                        : emotionState === 'disengaged'
+                          ? 'text-yellow-400'
+                          : emotionState === 'calm'
+                            ? 'text-green-400'
+                            : 'text-gray-500'
+                    }`}
+                  >
+                    {emotionState === 'stressed'
+                      ? '😰 Stressed → Level -1'
                       : emotionState === 'disengaged'
-                        ? 'text-yellow-400'
+                        ? '😑 Disengaged → Level +1'
                         : emotionState === 'calm'
-                          ? 'text-green-400'
-                          : 'text-gray-500'
-                  }`}
-                >
-                  {emotionState === 'stressed'
-                    ? '😰 Slowing'
-                    : emotionState === 'disengaged'
-                      ? '😑 Speeding'
-                      : emotionState === 'calm'
-                        ? '😊 Normal'
-                        : '...'}
-                </div>
+                          ? '😊 Calm → No change'
+                          : '...'}
+                  </div>
+
+                  {/* Emotion score bars */}
+                  {emotionScores && (
+                    <div className="space-y-1">
+                      {/* Stressed group */}
+                      <div className="text-[8px] text-gray-600 uppercase mb-0.5">
+                        Stressed (↓ level)
+                      </div>
+                      {(['fearful', 'surprised', 'angry'] as const).map(
+                        (emotion) => (
+                          <div key={emotion}>
+                            <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                              <span className="text-gray-500">{emotion}</span>
+                              <span className="text-gray-400">
+                                {(emotionScores[emotion] * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-[#333] h-1">
+                              <div
+                                className="h-1 transition-all duration-500"
+                                style={{
+                                  width: `${emotionScores[emotion] * 100}%`,
+                                  backgroundColor:
+                                    emotion === 'fearful'
+                                      ? '#7FDBFF'
+                                      : emotion === 'surprised'
+                                        ? '#FFDC00'
+                                        : '#FF4136',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+                      {/* Disengaged group */}
+                      <div className="text-[8px] text-gray-600 uppercase mt-2 mb-0.5">
+                        Disengaged (↑ level)
+                      </div>
+                      {(['sad', 'disgusted'] as const).map((emotion) => (
+                        <div key={emotion}>
+                          <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                            <span className="text-gray-500">{emotion}</span>
+                            <span className="text-gray-400">
+                              {(emotionScores[emotion] * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#333] h-1">
+                            <div
+                              className="h-1 transition-all duration-500"
+                              style={{
+                                width: `${emotionScores[emotion] * 100}%`,
+                                backgroundColor:
+                                  emotion === 'sad' ? '#0074D9' : '#B10DC9',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Calm group */}
+                      <div className="text-[8px] text-gray-600 uppercase mt-2 mb-0.5">
+                        Calm (no change)
+                      </div>
+                      {(['neutral', 'happy'] as const).map((emotion) => (
+                        <div key={emotion}>
+                          <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                            <span className="text-gray-500">{emotion}</span>
+                            <span className="text-gray-400">
+                              {(emotionScores[emotion] * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#333] h-1">
+                            <div
+                              className="h-1 transition-all duration-500"
+                              style={{
+                                width: `${emotionScores[emotion] * 100}%`,
+                                backgroundColor:
+                                  emotion === 'happy' ? '#2ECC40' : '#AAAAAA',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}

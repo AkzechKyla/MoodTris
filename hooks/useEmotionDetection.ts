@@ -2,15 +2,28 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 export type EmotionState = 'calm' | 'stressed' | 'disengaged' | 'unknown';
 
+export type EmotionScores = {
+  neutral: number;
+  happy: number;
+  sad: number;
+  angry: number;
+  fearful: number;
+  disgusted: number;
+  surprised: number;
+};
+
 export function useEmotionDetection(
   enabled: boolean,
   videoElRef: React.RefObject<HTMLVideoElement>,
 ) {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const [emotionState, setEmotionState] = useState<EmotionState>('unknown');
+  const [emotionScores, setEmotionScores] = useState<EmotionScores | null>(
+    null,
+  );
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,15 +62,23 @@ export function useEmotionDetection(
           .detectSingleFace(video, new faceapi.TinyFaceDetectorOptions())
           .withFaceExpressions();
         if (result) {
-          setEmotionState(
-            classify(result.expressions as unknown as Record<string, number>),
-          );
+          const e = result.expressions as unknown as Record<string, number>;
+          setEmotionState(classify(e));
+          setEmotionScores({
+            neutral: +(e.neutral ?? 0).toFixed(2),
+            happy: +(e.happy ?? 0).toFixed(2),
+            sad: +(e.sad ?? 0).toFixed(2),
+            angry: +(e.angry ?? 0).toFixed(2),
+            fearful: +(e.fearful ?? 0).toFixed(2),
+            disgusted: +(e.disgusted ?? 0).toFixed(2),
+            surprised: +(e.surprised ?? 0).toFixed(2),
+          });
         }
       }, 1500);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Camera error');
     }
-  }, []);
+  }, [videoElRef]);
 
   const stop = useCallback(() => {
     if (intervalRef.current) clearInterval(intervalRef.current);
@@ -66,6 +87,7 @@ export function useEmotionDetection(
     videoRef.current = null;
     setReady(false);
     setEmotionState('unknown');
+    setEmotionScores(null);
   }, []);
 
   useEffect(() => {
@@ -74,5 +96,5 @@ export function useEmotionDetection(
     return () => stop();
   }, [enabled, start, stop]);
 
-  return { emotionState, ready, error };
+  return { emotionState, emotionScores, ready, error };
 }
