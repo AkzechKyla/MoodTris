@@ -471,15 +471,17 @@ const TetrisGame = () => {
           <div className="text-sm text-white">{score}</div>
         </div>
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase">Level</div>
+          <div className="text-[10px] text-gray-500 mb-1 uppercase">
+            Speed Level
+          </div>
           <div className="text-sm text-white">{level}</div>
         </div>
         <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
           <div>Arrows: Move</div>
           <div>Up: Rotate</div>
           <div>Space: Drop</div>
-          <div>C: Hold</div>
-          <div>P: Esc</div>
+          <div>C or Left Shift: Hold</div>
+          <div>Escape: Pause/Restart</div>
         </div>
       </div>
 
@@ -505,12 +507,20 @@ const TetrisGame = () => {
             {gameState === 'PAUSED' && (
               <>
                 <h1 className="text-xl font-bold mb-6">PAUSED</h1>
-                <button
-                  onClick={() => setGameState('RESUMING')}
-                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
-                >
-                  RESUME
-                </button>
+                <div className="flex flex-col gap-4 w-3/4">
+                  <button
+                    onClick={() => setGameState('RESUMING')}
+                    className="border-2 border-white px-4 py-2 hover:bg-white hover:text-black transition"
+                  >
+                    RESUME
+                  </button>
+                  <button
+                    onClick={startGame}
+                    className="border-2 border-red-500 text-red-500 px-4 py-2 hover:bg-red-500 hover:text-white transition"
+                  >
+                    RESTART
+                  </button>
+                </div>
               </>
             )}
             {gameState === 'RESUMING' && (
