@@ -214,7 +214,7 @@ const TetrisGame = () => {
         const total = l + cleared;
         const newLevel = Math.floor(total / 10) + 1;
         setLevel(newLevel);
-        const base = Math.max(50, 1000 - (newLevel - 1) * 90);
+        const base = Math.max(50, 700 - (newLevel - 1) * 90);
         baseDropIntervalRef.current = base;
         dropIntervalRef.current = base;
         return total;
@@ -362,18 +362,20 @@ const TetrisGame = () => {
   }, [gameState]);
 
   useEffect(() => {
-    const base = baseDropIntervalRef.current;
-    if (emotionState === 'stressed') {
-      // slow down by 40% as mercy
-      dropIntervalRef.current = Math.min(base * 1.4, 1500);
-    } else if (emotionState === 'disengaged') {
-      // speed up slightly to re-engage
-      dropIntervalRef.current = Math.max(base * 0.85, 50);
-    } else {
-      // calm or unknown — restore base speed
+    if (!emotionEnabled || gameState !== 'PLAYING') return;
+    setLevel((currentLevel) => {
+      let newLevel = currentLevel;
+      if (emotionState === 'stressed') {
+        newLevel = Math.max(1, currentLevel - 1);
+      } else if (emotionState === 'disengaged') {
+        newLevel = Math.min(currentLevel + 1, 20);
+      }
+      const base = Math.max(50, 700 - (newLevel - 1) * 90);
       dropIntervalRef.current = base;
-    }
-  }, [emotionState]);
+      baseDropIntervalRef.current = base;
+      return newLevel;
+    });
+  }, [emotionState, emotionEnabled, gameState]);
 
   // --- Game Loop ---
   useEffect(() => {
@@ -443,8 +445,8 @@ const TetrisGame = () => {
     setScore(0);
     setLines(0);
     setLevel(1);
-    dropIntervalRef.current = 1000;
-    baseDropIntervalRef.current = 1000;
+    dropIntervalRef.current = 700;
+    baseDropIntervalRef.current = 700;
     spawnPiece();
     setGameState('PLAYING');
   };
