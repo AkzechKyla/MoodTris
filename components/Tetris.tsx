@@ -214,7 +214,7 @@ const TetrisGame = () => {
         const total = l + cleared;
         const newLevel = Math.floor(total / 10) + 1;
         setLevel(newLevel);
-        const base = Math.max(50, 700 - (newLevel - 1) * 90);
+        const base = Math.max(50, 1000 - (newLevel - 1) * 90);
         baseDropIntervalRef.current = base;
         dropIntervalRef.current = base;
         return total;
@@ -445,8 +445,8 @@ const TetrisGame = () => {
     setScore(0);
     setLines(0);
     setLevel(1);
-    dropIntervalRef.current = 700;
-    baseDropIntervalRef.current = 700;
+    dropIntervalRef.current = 1000;
+    baseDropIntervalRef.current = 1000;
     spawnPiece();
     setGameState('PLAYING');
   };
