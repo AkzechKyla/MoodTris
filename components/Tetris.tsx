@@ -9,6 +9,7 @@ const TetrisGame = () => {
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
   const keysHeldRef = useRef<Set<string>>(new Set());
+  const videoElRef = useRef<HTMLVideoElement>(null);
 
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -18,7 +19,10 @@ const TetrisGame = () => {
   >('IDLE');
   const [countdown, setCountdown] = useState(3);
   const [emotionEnabled, setEmotionEnabled] = useState(false);
-  const { emotionState, ready, error } = useEmotionDetection(emotionEnabled);
+  const { emotionState, ready, error } = useEmotionDetection(
+    emotionEnabled,
+    videoElRef,
+  );
 
   // Ref-based state to prevent closure issues in the game loop
   const boardRef = useRef(
@@ -446,7 +450,7 @@ const TetrisGame = () => {
   };
 
   return (
-    <div className="flex gap-4 font-mono select-none">
+    <div className="flex items-start gap-4 font-mono select-none">
       {/* Left Panel */}
       <div className="flex flex-col gap-4 w-28">
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
@@ -468,51 +472,12 @@ const TetrisGame = () => {
           <div className="text-[10px] text-gray-500 mb-1 uppercase">Level</div>
           <div className="text-sm text-white">{level}</div>
         </div>
-        {/* Emotion Awareness Toggle */}
-        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
-            Mood
-          </div>
-          <button
-            onClick={() => setEmotionEnabled((e) => !e)}
-            className={`w-full text-[10px] py-1 border transition ${
-              emotionEnabled
-                ? 'border-green-500 text-green-400 hover:bg-green-500/10'
-                : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
-            }`}
-          >
-            {emotionEnabled ? 'ON' : 'OFF'}
-          </button>
-
-          {emotionEnabled && (
-            <div className="mt-2 text-[9px] leading-relaxed">
-              {error && <div className="text-red-400">{error}</div>}
-              {!ready && !error && (
-                <div className="text-gray-600 animate-pulse">Loading...</div>
-              )}
-              {ready && (
-                <div
-                  className={`font-bold uppercase tracking-wider ${
-                    emotionState === 'stressed'
-                      ? 'text-blue-400'
-                      : emotionState === 'disengaged'
-                        ? 'text-yellow-400'
-                        : emotionState === 'calm'
-                          ? 'text-green-400'
-                          : 'text-gray-500'
-                  }`}
-                >
-                  {emotionState === 'stressed'
-                    ? '😰 Slowing'
-                    : emotionState === 'disengaged'
-                      ? '😑 Speeding'
-                      : emotionState === 'calm'
-                        ? '😊 Normal'
-                        : '...'}
-                </div>
-              )}
-            </div>
-          )}
+        <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
+          <div>Arrows: Move</div>
+          <div>Up: Rotate</div>
+          <div>Space: Drop</div>
+          <div>C: Hold</div>
+          <div>P: Esc</div>
         </div>
       </div>
 
@@ -586,13 +551,64 @@ const TetrisGame = () => {
             className="w-full bg-black/20"
           />
         </div>
-        <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
-          <div>Arrows: Move</div>
-          <div>Up: Rotate</div>
-          <div>Space: Drop</div>
-          <div>C: Hold</div>
-          <div>P: Esc</div>
+        {/* Emotion Awareness Toggle */}
+        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
+          <div className="text-[10px] text-gray-500 mb-1 uppercase tracking-widest">
+            Mood
+          </div>
+          <button
+            onClick={() => setEmotionEnabled((e) => !e)}
+            className={`w-full text-[10px] py-1 border transition ${
+              emotionEnabled
+                ? 'border-green-500 text-green-400 hover:bg-green-500/10'
+                : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
+            }`}
+          >
+            {emotionEnabled ? 'ON' : 'OFF'}
+          </button>
+
+          {emotionEnabled && (
+            <div className="mt-2 text-[9px] leading-relaxed">
+              {error && <div className="text-red-400">{error}</div>}
+              {!ready && !error && (
+                <div className="text-gray-600 animate-pulse">Loading...</div>
+              )}
+              {ready && (
+                <div
+                  className={`font-bold uppercase tracking-wider ${
+                    emotionState === 'stressed'
+                      ? 'text-blue-400'
+                      : emotionState === 'disengaged'
+                        ? 'text-yellow-400'
+                        : emotionState === 'calm'
+                          ? 'text-green-400'
+                          : 'text-gray-500'
+                  }`}
+                >
+                  {emotionState === 'stressed'
+                    ? '😰 Slowing'
+                    : emotionState === 'disengaged'
+                      ? '😑 Speeding'
+                      : emotionState === 'calm'
+                        ? '😊 Normal'
+                        : '...'}
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {emotionEnabled && (
+          <div className="bg-[#1a1a1a] border-2 border-[#444] overflow-hidden">
+            <video
+              ref={videoElRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full scale-x-[-1]"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

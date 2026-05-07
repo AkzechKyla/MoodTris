@@ -2,7 +2,10 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 
 export type EmotionState = 'calm' | 'stressed' | 'disengaged' | 'unknown';
 
-export function useEmotionDetection(enabled: boolean) {
+export function useEmotionDetection(
+  enabled: boolean,
+  videoElRef: React.RefObject<HTMLVideoElement>,
+) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -32,11 +35,8 @@ export function useEmotionDetection(enabled: boolean) {
       const stream = await navigator.mediaDevices.getUserMedia({ video: true });
       streamRef.current = stream;
 
-      const video = document.createElement('video');
+      const video = videoElRef.current!;
       video.srcObject = stream;
-      video.autoplay = true;
-      video.muted = true;
-      video.playsInline = true;
       videoRef.current = video;
 
       await new Promise<void>((res) => {
