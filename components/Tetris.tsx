@@ -549,7 +549,7 @@ const TetrisGame = () => {
           <canvas
             ref={nextCanvasRef}
             width={80}
-            height={160}
+            height={200}
             className="w-full bg-black/20"
           />
         </div>
