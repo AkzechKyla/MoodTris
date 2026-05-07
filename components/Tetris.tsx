@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
+import { useEmotionDetection } from '@/hooks/useEmotionDetection';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
   const keysHeldRef = useRef<Set<string>>(new Set());
+  const videoElRef = useRef<HTMLVideoElement>(null);
 
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -16,6 +18,11 @@ const TetrisGame = () => {
     'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'
   >('IDLE');
   const [countdown, setCountdown] = useState(3);
+  const [emotionEnabled, setEmotionEnabled] = useState(false);
+  const { emotionState, emotionScores, ready, error } = useEmotionDetection(
+    emotionEnabled,
+    videoElRef,
+  );
 
   // Ref-based state to prevent closure issues in the game loop
   const boardRef = useRef(
@@ -26,6 +33,7 @@ const TetrisGame = () => {
   const heldPieceRef = useRef<any>(null);
   const canHoldRef = useRef(true);
   const dropIntervalRef = useRef(1000);
+  const baseDropIntervalRef = useRef(1000);
   const lastTimeRef = useRef(0);
   const dropCounterRef = useRef(0);
 
@@ -206,7 +214,9 @@ const TetrisGame = () => {
         const total = l + cleared;
         const newLevel = Math.floor(total / 10) + 1;
         setLevel(newLevel);
-        dropIntervalRef.current = Math.max(50, 1000 - (newLevel - 1) * 90);
+        const base = Math.max(50, 1000 - (newLevel - 1) * 90);
+        baseDropIntervalRef.current = base;
+        dropIntervalRef.current = base;
         return total;
       });
       boardRef.current = newBoard;
@@ -351,6 +361,22 @@ const TetrisGame = () => {
     return () => clearInterval(interval);
   }, [gameState]);
 
+  useEffect(() => {
+    if (!emotionEnabled || gameState !== 'PLAYING') return;
+    setLevel((currentLevel) => {
+      let newLevel = currentLevel;
+      if (emotionState === 'stressed') {
+        newLevel = Math.max(1, currentLevel - 1);
+      } else if (emotionState === 'disengaged') {
+        newLevel = Math.min(currentLevel + 1, 20);
+      }
+      const base = Math.max(50, 700 - (newLevel - 1) * 90);
+      dropIntervalRef.current = base;
+      baseDropIntervalRef.current = base;
+      return newLevel;
+    });
+  }, [emotionState, emotionEnabled, gameState]);
+
   // --- Game Loop ---
   useEffect(() => {
     let raf: number;
@@ -420,12 +446,13 @@ const TetrisGame = () => {
     setLines(0);
     setLevel(1);
     dropIntervalRef.current = 1000;
+    baseDropIntervalRef.current = 1000;
     spawnPiece();
     setGameState('PLAYING');
   };
 
   return (
-    <div className="flex gap-4 font-mono select-none">
+    <div className="flex items-start gap-4 font-mono select-none">
       {/* Left Panel */}
       <div className="flex flex-col gap-4 w-28">
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
@@ -444,8 +471,17 @@ const TetrisGame = () => {
           <div className="text-sm text-white">{score}</div>
         </div>
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-1 uppercase">Level</div>
+          <div className="text-[10px] text-gray-500 mb-1 uppercase">
+            Speed Level
+          </div>
           <div className="text-sm text-white">{level}</div>
+        </div>
+        <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
+          <div>Arrows: Move</div>
+          <div>Up: Rotate</div>
+          <div>Space: Drop</div>
+          <div>C or Left Shift: Hold</div>
+          <div>Escape: Pause/Restart</div>
         </div>
       </div>
 
@@ -471,12 +507,20 @@ const TetrisGame = () => {
             {gameState === 'PAUSED' && (
               <>
                 <h1 className="text-xl font-bold mb-6">PAUSED</h1>
-                <button
-                  onClick={() => setGameState('RESUMING')}
-                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
-                >
-                  RESUME
-                </button>
+                <div className="flex flex-col gap-4 w-3/4">
+                  <button
+                    onClick={() => setGameState('RESUMING')}
+                    className="border-2 border-white px-4 py-2 hover:bg-white hover:text-black transition"
+                  >
+                    RESUME
+                  </button>
+                  <button
+                    onClick={startGame}
+                    className="border-2 border-red-500 text-red-500 px-4 py-2 hover:bg-red-500 hover:text-white transition"
+                  >
+                    RESTART
+                  </button>
+                </div>
               </>
             )}
             {gameState === 'RESUMING' && (
@@ -515,17 +559,163 @@ const TetrisGame = () => {
           <canvas
             ref={nextCanvasRef}
             width={80}
-            height={160}
+            height={200}
             className="w-full bg-black/20"
           />
         </div>
-        <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
-          <div>Arrows: Move</div>
-          <div>Up: Rotate</div>
-          <div>Space: Drop</div>
-          <div>C: Hold</div>
-          <div>P: Esc</div>
+      </div>
+
+      {/* Far Right Panel */}
+      <div className="flex flex-col gap-4 w-40">
+        {/* Emotion Awareness Toggle */}
+        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
+          <div className="flex items-center justify-between">
+            <div className="text-[10px] text-gray-500 uppercase tracking-widest">
+              Mood
+            </div>
+            <button
+              onClick={() => setEmotionEnabled((e) => !e)}
+              className={`px-2 py-0.5 text-[10px] border transition ${
+                emotionEnabled
+                  ? 'border-green-500 text-green-400 hover:bg-green-500/10'
+                  : 'border-[#555] text-gray-500 hover:border-gray-400 hover:text-gray-300'
+              }`}
+            >
+              {emotionEnabled ? 'ON' : 'OFF'}
+            </button>
+          </div>
+
+          {emotionEnabled && (
+            <div className="mt-2 text-[9px] leading-relaxed">
+              {error && <div className="text-red-400">{error}</div>}
+              {!ready && !error && (
+                <div className="text-gray-600 animate-pulse">Loading...</div>
+              )}
+              {ready && (
+                <>
+                  {/* Current classified state + what it does to level */}
+                  <div
+                    className={`font-bold uppercase tracking-wider mb-2 ${
+                      emotionState === 'stressed'
+                        ? 'text-blue-400'
+                        : emotionState === 'disengaged'
+                          ? 'text-yellow-400'
+                          : emotionState === 'calm'
+                            ? 'text-green-400'
+                            : 'text-gray-500'
+                    }`}
+                  >
+                    {emotionState === 'stressed'
+                      ? '😰 Stressed → Level -1'
+                      : emotionState === 'disengaged'
+                        ? '😑 Disengaged → Level +1'
+                        : emotionState === 'calm'
+                          ? '😊 Calm → No change'
+                          : '...'}
+                  </div>
+
+                  {/* Emotion score bars */}
+                  {emotionScores && (
+                    <div className="space-y-1">
+                      {/* Stressed group */}
+                      <div className="text-[8px] text-gray-600 uppercase mb-0.5">
+                        Stressed (↓ level)
+                      </div>
+                      {(['fearful', 'surprised', 'angry'] as const).map(
+                        (emotion) => (
+                          <div key={emotion}>
+                            <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                              <span className="text-gray-500">{emotion}</span>
+                              <span className="text-gray-400">
+                                {(emotionScores[emotion] * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-[#333] h-1">
+                              <div
+                                className="h-1 transition-all duration-500"
+                                style={{
+                                  width: `${emotionScores[emotion] * 100}%`,
+                                  backgroundColor:
+                                    emotion === 'fearful'
+                                      ? '#7FDBFF'
+                                      : emotion === 'surprised'
+                                        ? '#FFDC00'
+                                        : '#FF4136',
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ),
+                      )}
+
+                      {/* Disengaged group */}
+                      <div className="text-[8px] text-gray-600 uppercase mt-2 mb-0.5">
+                        Disengaged (↑ level)
+                      </div>
+                      {(['sad', 'disgusted'] as const).map((emotion) => (
+                        <div key={emotion}>
+                          <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                            <span className="text-gray-500">{emotion}</span>
+                            <span className="text-gray-400">
+                              {(emotionScores[emotion] * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#333] h-1">
+                            <div
+                              className="h-1 transition-all duration-500"
+                              style={{
+                                width: `${emotionScores[emotion] * 100}%`,
+                                backgroundColor:
+                                  emotion === 'sad' ? '#0074D9' : '#B10DC9',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Calm group */}
+                      <div className="text-[8px] text-gray-600 uppercase mt-2 mb-0.5">
+                        Calm (no change)
+                      </div>
+                      {(['neutral', 'happy'] as const).map((emotion) => (
+                        <div key={emotion}>
+                          <div className="flex justify-between text-[8px] uppercase mb-0.5">
+                            <span className="text-gray-500">{emotion}</span>
+                            <span className="text-gray-400">
+                              {(emotionScores[emotion] * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full bg-[#333] h-1">
+                            <div
+                              className="h-1 transition-all duration-500"
+                              style={{
+                                width: `${emotionScores[emotion] * 100}%`,
+                                backgroundColor:
+                                  emotion === 'happy' ? '#2ECC40' : '#AAAAAA',
+                              }}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
         </div>
+
+        {emotionEnabled && (
+          <div className="bg-[#1a1a1a] border-2 border-[#444] overflow-hidden">
+            <video
+              ref={videoElRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full scale-x-[-1]"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
