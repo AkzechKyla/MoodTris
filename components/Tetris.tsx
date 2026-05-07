@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
@@ -12,11 +12,15 @@ const TetrisGame = () => {
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
   const [level, setLevel] = useState(1);
-  const [gameState, setGameState] = useState<'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'>('IDLE');
+  const [gameState, setGameState] = useState<
+    'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'
+  >('IDLE');
   const [countdown, setCountdown] = useState(3);
-  
+
   // Ref-based state to prevent closure issues in the game loop
-  const boardRef = useRef(Array.from({ length: ROWS }, () => Array(COLS).fill(0)));
+  const boardRef = useRef(
+    Array.from({ length: ROWS }, () => Array(COLS).fill(0)),
+  );
   const pieceRef = useRef<any>(null);
   const nextPiecesRef = useRef<any[]>([]);
   const heldPieceRef = useRef<any>(null);
@@ -28,15 +32,15 @@ const TetrisGame = () => {
   // --- Logic Helpers ---
   const randPiece = () => {
     const t = Math.floor(Math.random() * 7) + 1;
-    return { type: t, shape: SHAPES[t].map(r => [...r]), x: 3, y: 0 };
+    return { type: t, shape: SHAPES[t].map((r) => [...r]), x: 3, y: 0 };
   };
 
   const rotateCW = (s: number[][]) => {
-    const R = s.length, C = s[0].length;
+    const R = s.length,
+      C = s[0].length;
     const n = Array.from({ length: C }, () => Array(R).fill(0));
     for (let r = 0; r < R; r++)
-      for (let c = 0; c < C; c++)
-        n[c][R - 1 - r] = s[r][c];
+      for (let c = 0; c < C; c++) n[c][R - 1 - r] = s[r][c];
     return n;
   };
 
@@ -44,7 +48,8 @@ const TetrisGame = () => {
     for (let r = 0; r < s.length; r++)
       for (let c = 0; c < s[r].length; c++) {
         if (!s[r][c]) continue;
-        const nx = px + c, ny = py + r;
+        const nx = px + c,
+          ny = py + r;
         if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
         if (ny >= 0 && boardRef.current[ny][nx]) return true;
       }
@@ -52,7 +57,13 @@ const TetrisGame = () => {
   };
 
   // --- Drawing ---
-  const drawBlock = (ctx: CanvasRenderingContext2D, type: number, x: number, y: number, size: number) => {
+  const drawBlock = (
+    ctx: CanvasRenderingContext2D,
+    type: number,
+    x: number,
+    y: number,
+    size: number,
+  ) => {
     ctx.fillStyle = COLORS[type];
     ctx.fillRect(x * size, y * size, size, size);
     ctx.fillStyle = 'rgba(255,255,255,0.25)';
@@ -95,7 +106,12 @@ const TetrisGame = () => {
         row.forEach((v: number, c: number) => {
           if (v) {
             ctx.fillStyle = COLORS[piece.type];
-            ctx.fillRect((piece.x + c) * BLOCK_SIZE, (gy + r) * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
+            ctx.fillRect(
+              (piece.x + c) * BLOCK_SIZE,
+              (gy + r) * BLOCK_SIZE,
+              BLOCK_SIZE,
+              BLOCK_SIZE,
+            );
           }
         });
       });
@@ -104,7 +120,8 @@ const TetrisGame = () => {
       // Active Piece
       piece.shape.forEach((row: number[], r: number) => {
         row.forEach((v: number, c: number) => {
-          if (v) drawBlock(ctx, piece.type, piece.x + c, piece.y + r, BLOCK_SIZE);
+          if (v)
+            drawBlock(ctx, piece.type, piece.x + c, piece.y + r, BLOCK_SIZE);
         });
       });
     }
@@ -132,25 +149,30 @@ const TetrisGame = () => {
     };
 
     drawMini(holdCanvasRef.current, heldPieceRef.current);
-    
+
     // Draw Next (Showing top 3)
     const nextCtx = nextCanvasRef.current?.getContext('2d');
     if (nextCtx && nextCanvasRef.current) {
-        nextCtx.fillStyle = '#1a1a1a';
-        nextCtx.fillRect(0, 0, nextCanvasRef.current.width, nextCanvasRef.current.height);
-        nextPiecesRef.current.slice(0, 3).forEach((p, i) => {
-            const sz = 14;
-            const ox = (nextCanvasRef.current!.width / sz - p.shape[0].length) / 2;
-            const oy = 1 + i * 4;
-            p.shape.forEach((row: any, r: number) => {
-                row.forEach((v: any, c: number) => {
-                    if (v) {
-                        nextCtx.fillStyle = COLORS[p.type];
-                        nextCtx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
-                    }
-                });
-            });
+      nextCtx.fillStyle = '#1a1a1a';
+      nextCtx.fillRect(
+        0,
+        0,
+        nextCanvasRef.current.width,
+        nextCanvasRef.current.height,
+      );
+      nextPiecesRef.current.slice(0, 3).forEach((p, i) => {
+        const sz = 14;
+        const ox = (nextCanvasRef.current!.width / sz - p.shape[0].length) / 2;
+        const oy = 1 + i * 4;
+        p.shape.forEach((row: any, r: number) => {
+          row.forEach((v: any, c: number) => {
+            if (v) {
+              nextCtx.fillStyle = COLORS[p.type];
+              nextCtx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
+            }
+          });
         });
+      });
     }
   }, []);
 
@@ -170,7 +192,7 @@ const TetrisGame = () => {
     let cleared = 0;
     const newBoard = [...boardRef.current];
     for (let r = ROWS - 1; r >= 0; r--) {
-      if (newBoard[r].every(v => v !== 0)) {
+      if (newBoard[r].every((v) => v !== 0)) {
         newBoard.splice(r, 1);
         newBoard.unshift(Array(COLS).fill(0));
         cleared++;
@@ -179,8 +201,8 @@ const TetrisGame = () => {
     }
     if (cleared > 0) {
       const pts = [0, 100, 300, 500, 800];
-      setScore(s => s + pts[cleared] * level);
-      setLines(l => {
+      setScore((s) => s + pts[cleared] * level);
+      setLines((l) => {
         const total = l + cleared;
         const newLevel = Math.floor(total / 10) + 1;
         setLevel(newLevel);
@@ -202,43 +224,55 @@ const TetrisGame = () => {
     spawnPiece();
   }, [clearLines, spawnPiece]);
 
-  const tryMove = useCallback((dx: number, dy: number, rotate = false) => {
-    if (gameState !== 'PLAYING') return;
-    let p = pieceRef.current;
-    let ns = rotate ? rotateCW(p.shape) : p.shape;
-    let nx = p.x + dx;
-    let ny = p.y + dy;
+  const tryMove = useCallback(
+    (dx: number, dy: number, rotate = false) => {
+      if (gameState !== 'PLAYING') return;
+      let p = pieceRef.current;
+      let ns = rotate ? rotateCW(p.shape) : p.shape;
+      let nx = p.x + dx;
+      let ny = p.y + dy;
 
-    if (!collides(ns, nx, ny)) {
-      pieceRef.current = { ...p, shape: ns, x: nx, y: ny };
-      render();
-      return true;
-    } else if (rotate) {
-        // Simple wall kick
-        if (!collides(ns, nx + 1, ny)) { nx++; }
-        else if (!collides(ns, nx - 1, ny)) { nx--; }
-        else { return false; }
+      if (!collides(ns, nx, ny)) {
         pieceRef.current = { ...p, shape: ns, x: nx, y: ny };
         render();
         return true;
-    }
-    if (dy > 0) placePiece();
-    return false;
-  }, [gameState, placePiece, render]);
+      } else if (rotate) {
+        // Simple wall kick
+        if (!collides(ns, nx + 1, ny)) {
+          nx++;
+        } else if (!collides(ns, nx - 1, ny)) {
+          nx--;
+        } else {
+          return false;
+        }
+        pieceRef.current = { ...p, shape: ns, x: nx, y: ny };
+        render();
+        return true;
+      }
+      if (dy > 0) placePiece();
+      return false;
+    },
+    [gameState, placePiece, render],
+  );
 
   const handleHold = useCallback(() => {
     if (!canHoldRef.current || gameState !== 'PLAYING') return;
     canHoldRef.current = false;
     const currentType = pieceRef.current.type;
-    const reset = (type: number) => ({ type, shape: SHAPES[type].map(r => [...r]), x: 3, y: 0 });
-    
+    const reset = (type: number) => ({
+      type,
+      shape: SHAPES[type].map((r) => [...r]),
+      x: 3,
+      y: 0,
+    });
+
     if (!heldPieceRef.current) {
-        heldPieceRef.current = reset(currentType);
-        spawnPiece();
+      heldPieceRef.current = reset(currentType);
+      spawnPiece();
     } else {
-        const tmp = heldPieceRef.current.type;
-        heldPieceRef.current = reset(currentType);
-        pieceRef.current = reset(tmp);
+      const tmp = heldPieceRef.current.type;
+      heldPieceRef.current = reset(currentType);
+      pieceRef.current = reset(tmp);
     }
     drawSidebarCanvases();
     render();
@@ -248,18 +282,41 @@ const TetrisGame = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // One-shot actions
-      if (e.code === 'ArrowUp') { e.preventDefault(); tryMove(0, 0, true); return; }
+      if (e.code === 'ArrowUp') {
+        e.preventDefault();
+        tryMove(0, 0, true);
+        return;
+      }
       if (e.code === 'Space') {
         e.preventDefault();
-        while (!collides(pieceRef.current.shape, pieceRef.current.x, pieceRef.current.y + 1)) {
+        while (
+          !collides(
+            pieceRef.current.shape,
+            pieceRef.current.x,
+            pieceRef.current.y + 1,
+          )
+        ) {
           pieceRef.current.y++;
         }
         placePiece();
         return;
       }
-      if (e.code === 'KeyC' || e.code === 'ShiftLeft') { handleHold(); return; }
-      if (e.code === 'Escape') { setGameState('PAUSED'); return; }
-      if (e.code === 'Enter' && gameState !== 'PLAYING' && gameState !== 'PAUSED') { startGame(); return; }
+      if (e.code === 'KeyC' || e.code === 'ShiftLeft') {
+        handleHold();
+        return;
+      }
+      if (e.code === 'Escape') {
+        setGameState('PAUSED');
+        return;
+      }
+      if (
+        e.code === 'Enter' &&
+        gameState !== 'PLAYING' &&
+        gameState !== 'PAUSED'
+      ) {
+        startGame();
+        return;
+      }
 
       // Held keys
       keysHeldRef.current.add(e.code);
@@ -282,7 +339,7 @@ const TetrisGame = () => {
     if (gameState !== 'RESUMING') return;
     setCountdown(3);
     const interval = setInterval(() => {
-      setCountdown(prev => {
+      setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(interval);
           setGameState('PLAYING');
@@ -298,7 +355,7 @@ const TetrisGame = () => {
   useEffect(() => {
     let raf: number;
     const moveRepeatInterval = 50; // ms between moves while held
-    const moveRepeatDelay = 150;   // ms before repeat starts (DAS)
+    const moveRepeatDelay = 150; // ms before repeat starts (DAS)
     const keyTimers = new Map<string, { last: number; started: number }>();
 
     const loop = (time: number) => {
@@ -314,14 +371,21 @@ const TetrisGame = () => {
               // First frame key is held — move immediately
               if (code === 'ArrowLeft') tryMove(-1, 0);
               else if (code === 'ArrowRight') tryMove(1, 0);
-              else if (code === 'ArrowDown') { tryMove(0, 1); }
+              else if (code === 'ArrowDown') {
+                tryMove(0, 1);
+              }
               keyTimers.set(code, { last: time, started: time });
             } else {
               const elapsed = time - timer.started;
-              if (elapsed >= moveRepeatDelay && time - timer.last >= moveRepeatInterval) {
+              if (
+                elapsed >= moveRepeatDelay &&
+                time - timer.last >= moveRepeatInterval
+              ) {
                 if (code === 'ArrowLeft') tryMove(-1, 0);
                 else if (code === 'ArrowRight') tryMove(1, 0);
-                else if (code === 'ArrowDown') { tryMove(0, 1); }
+                else if (code === 'ArrowDown') {
+                  tryMove(0, 1);
+                }
                 keyTimers.set(code, { ...timer, last: time });
               }
             }
@@ -345,7 +409,12 @@ const TetrisGame = () => {
 
   const startGame = () => {
     boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-    nextPiecesRef.current = [randPiece(), randPiece(), randPiece(), randPiece()];
+    nextPiecesRef.current = [
+      randPiece(),
+      randPiece(),
+      randPiece(),
+      randPiece(),
+    ];
     heldPieceRef.current = null;
     setScore(0);
     setLines(0);
@@ -360,8 +429,15 @@ const TetrisGame = () => {
       {/* Left Panel */}
       <div className="flex flex-col gap-4 w-28">
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">Hold</div>
-          <canvas ref={holdCanvasRef} width={80} height={80} className="w-full bg-black/20" />
+          <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">
+            Hold
+          </div>
+          <canvas
+            ref={holdCanvasRef}
+            width={80}
+            height={80}
+            className="w-full bg-black/20"
+          />
         </div>
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
           <div className="text-[10px] text-gray-500 mb-1 uppercase">Score</div>
@@ -376,31 +452,54 @@ const TetrisGame = () => {
       {/* Center Game Board */}
       <div className="relative border-[3px] border-[#555] bg-black shadow-2xl">
         <canvas ref={canvasRef} width={200} height={400} />
-        
+
         {gameState !== 'PLAYING' && (
           <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-center p-4">
             {gameState === 'IDLE' && (
               <>
-                <h1 className="text-2xl font-bold mb-6 tracking-tighter">TETRIS</h1>
-                <button onClick={startGame} className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition">START</button>
+                <h1 className="text-2xl font-bold mb-6 tracking-tighter">
+                  TETRIS
+                </h1>
+                <button
+                  onClick={startGame}
+                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
+                >
+                  START
+                </button>
               </>
             )}
             {gameState === 'PAUSED' && (
               <>
                 <h1 className="text-xl font-bold mb-6">PAUSED</h1>
-                <button onClick={() => setGameState('RESUMING')} className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition">RESUME</button>
+                <button
+                  onClick={() => setGameState('RESUMING')}
+                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
+                >
+                  RESUME
+                </button>
               </>
             )}
             {gameState === 'RESUMING' && (
               <>
-                <h1 className="text-6xl font-bold text-white animate-pulse">{countdown}</h1>
+                <h1 className="text-6xl font-bold text-white animate-pulse">
+                  {countdown}
+                </h1>
               </>
             )}
             {gameState === 'GAMEOVER' && (
               <>
-                <h1 className="text-xl font-bold text-red-500 mb-2">GAME OVER</h1>
-                <p className="text-xs text-gray-400 mb-6">FINAL SCORE: {score}</p>
-                <button onClick={startGame} className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition">TRY AGAIN</button>
+                <h1 className="text-xl font-bold text-red-500 mb-2">
+                  GAME OVER
+                </h1>
+                <p className="text-xs text-gray-400 mb-6">
+                  FINAL SCORE: {score}
+                </p>
+                <button
+                  onClick={startGame}
+                  className="border-2 border-white px-6 py-2 hover:bg-white hover:text-black transition"
+                >
+                  TRY AGAIN
+                </button>
               </>
             )}
           </div>
@@ -410,8 +509,15 @@ const TetrisGame = () => {
       {/* Right Panel */}
       <div className="flex flex-col gap-4 w-28">
         <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
-          <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">Next</div>
-          <canvas ref={nextCanvasRef} width={80} height={160} className="w-full bg-black/20" />
+          <div className="text-[10px] text-gray-500 mb-2 uppercase tracking-widest">
+            Next
+          </div>
+          <canvas
+            ref={nextCanvasRef}
+            width={80}
+            height={160}
+            className="w-full bg-black/20"
+          />
         </div>
         <div className="text-[8px] text-gray-600 space-y-2 uppercase leading-relaxed">
           <div>Arrows: Move</div>
