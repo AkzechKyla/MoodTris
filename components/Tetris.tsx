@@ -7,6 +7,7 @@ const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
+  const keysHeldRef = useRef<Set<string>>(new Set());
 
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -245,38 +246,72 @@ const TetrisGame = () => {
   // --- Controls ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (gameState !== 'PLAYING') {
-          if (e.code === 'Enter' && gameState !== 'PAUSED') startGame();
-          return;
+      // One-shot actions
+      if (e.code === 'ArrowUp') { e.preventDefault(); tryMove(0, 0, true); return; }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        while (!collides(pieceRef.current.shape, pieceRef.current.x, pieceRef.current.y + 1)) {
+          pieceRef.current.y++;
+        }
+        placePiece();
+        return;
       }
-      switch (e.code) {
-        case 'ArrowLeft': tryMove(-1, 0); break;
-        case 'ArrowRight': tryMove(1, 0); break;
-        case 'ArrowDown': tryMove(0, 1); setScore(s => s + 1); break;
-        case 'ArrowUp': tryMove(0, 0, true); break;
-        case 'Space': 
-            e.preventDefault();
-            while (!collides(pieceRef.current.shape, pieceRef.current.x, pieceRef.current.y + 1)) {
-                pieceRef.current.y++;
-            }
-            placePiece();
-            break;
-        case 'KeyC':
-        case 'ShiftLeft': handleHold(); break;
-        case 'KeyP': setGameState('PAUSED'); break;
-      }
+      if (e.code === 'KeyC' || e.code === 'ShiftLeft') { handleHold(); return; }
+      if (e.code === 'KeyP') { setGameState('PAUSED'); return; }
+      if (e.code === 'Enter' && gameState !== 'PLAYING' && gameState !== 'PAUSED') { startGame(); return; }
+
+      // Held keys
+      keysHeldRef.current.add(e.code);
     };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysHeldRef.current.delete(e.code);
+    };
+
     window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
   }, [gameState, tryMove, handleHold, placePiece]);
 
   // --- Game Loop ---
   useEffect(() => {
     let raf: number;
+    const moveRepeatInterval = 50; // ms between moves while held
+    const moveRepeatDelay = 150;   // ms before repeat starts (DAS)
+    const keyTimers = new Map<string, { last: number; started: number }>();
+
     const loop = (time: number) => {
       if (gameState === 'PLAYING') {
         const dt = time - lastTimeRef.current;
         lastTimeRef.current = time;
+
+        // Handle held movement keys with DAS (Delayed Auto Shift)
+        for (const code of ['ArrowLeft', 'ArrowRight', 'ArrowDown']) {
+          if (keysHeldRef.current.has(code)) {
+            const timer = keyTimers.get(code);
+            if (!timer) {
+              // First frame key is held — move immediately
+              if (code === 'ArrowLeft') tryMove(-1, 0);
+              else if (code === 'ArrowRight') tryMove(1, 0);
+              else if (code === 'ArrowDown') { tryMove(0, 1); setScore(s => s + 1); }
+              keyTimers.set(code, { last: time, started: time });
+            } else {
+              const elapsed = time - timer.started;
+              if (elapsed >= moveRepeatDelay && time - timer.last >= moveRepeatInterval) {
+                if (code === 'ArrowLeft') tryMove(-1, 0);
+                else if (code === 'ArrowRight') tryMove(1, 0);
+                else if (code === 'ArrowDown') { tryMove(0, 1); setScore(s => s + 1); }
+                keyTimers.set(code, { ...timer, last: time });
+              }
+            }
+          } else {
+            keyTimers.delete(code); // Key released — reset timer
+          }
+        }
+
         dropCounterRef.current += dt;
         if (dropCounterRef.current >= dropIntervalRef.current) {
           tryMove(0, 1);
