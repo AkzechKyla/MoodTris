@@ -1,7 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  COLS,
+  ROWS,
+  BLOCK_SIZE,
+  COLORS,
+  SHAPES,
+  LOCK_DELAY,
+} from '@/constants/tetris';
 import { useEmotionDetection } from '@/hooks/useEmotionDetection';
 import { TetrisEngine, Piece } from '@/utils/tetris-engine';
 
@@ -11,6 +18,7 @@ const TetrisGame = () => {
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
   const keysHeldRef = useRef<Set<string>>(new Set());
   const videoElRef = useRef<HTMLVideoElement>(null);
+  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [score, setScore] = useState(0);
   const [lines, setLines] = useState(0);
@@ -214,7 +222,15 @@ const TetrisGame = () => {
     }
   }, [level]);
 
+  const clearLockTimer = useCallback(() => {
+    if (lockTimerRef.current) {
+      clearTimeout(lockTimerRef.current);
+      lockTimerRef.current = null;
+    }
+  }, []);
+
   const placePiece = useCallback(() => {
+    clearLockTimer();
     const p = pieceRef.current;
     if (!p) return;
     p.shape.forEach((row: number[], r: number) => {
@@ -224,7 +240,7 @@ const TetrisGame = () => {
     });
     clearLines();
     spawnPiece();
-  }, [clearLines, spawnPiece]);
+  }, [clearLines, spawnPiece, clearLockTimer]);
 
   const tryMove = useCallback(
     (dx: number, dy: number, rotate = false) => {
@@ -232,46 +248,70 @@ const TetrisGame = () => {
 
       const p = pieceRef.current;
       if (!p) return false;
-      const nextShape = rotate ? TetrisEngine.rotate(p.shape) : p.shape;
 
-      // Cleanly attempt movement
+      const nextShape = rotate ? TetrisEngine.rotate(p.shape) : p.shape;
+      const nextX = p.x + dx;
+      const nextY = p.y + dy;
+
       if (
-        !TetrisEngine.checkCollision(
+        !TetrisEngine.checkCollision(boardRef.current, nextShape, nextX, nextY)
+      ) {
+        pieceRef.current = { ...p, shape: nextShape, x: nextX, y: nextY };
+
+        const isTouchingFloor = TetrisEngine.checkCollision(
           boardRef.current,
           nextShape,
-          p.x + dx,
-          p.y + dy,
-        )
-      ) {
-        pieceRef.current = { ...p, shape: nextShape, x: p.x + dx, y: p.y + dy };
+          nextX,
+          nextY + 1,
+        );
+
+        if (isTouchingFloor) {
+          clearLockTimer();
+          lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
+        } else {
+          clearLockTimer();
+        }
+
         render();
         return true;
       }
 
-      // Handle Wall Kicks via shared engine logic
       if (rotate) {
         const kickedX = TetrisEngine.attemptWallKick(
           boardRef.current,
           nextShape,
-          p.x + dx,
-          p.y + dy,
+          nextX,
+          nextY,
         );
         if (kickedX !== null) {
-          pieceRef.current = {
-            ...p,
-            shape: nextShape,
-            x: kickedX,
-            y: p.y + dy,
-          };
+          pieceRef.current = { ...p, shape: nextShape, x: kickedX, y: nextY };
+
+          if (
+            TetrisEngine.checkCollision(
+              boardRef.current,
+              nextShape,
+              kickedX,
+              nextY + 1,
+            )
+          ) {
+            clearLockTimer();
+            lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
+          }
+
           render();
           return true;
         }
       }
 
-      if (dy > 0) placePiece();
+      if (dy > 0) {
+        if (!lockTimerRef.current) {
+          lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
+        }
+      }
+
       return false;
     },
-    [gameState, render, placePiece],
+    [gameState, render, placePiece, clearLockTimer],
   );
 
   const handleHold = useCallback(() => {
@@ -335,7 +375,8 @@ const TetrisGame = () => {
         e.preventDefault();
         if (!pieceRef.current) return;
         while (
-          !collides(
+          !TetrisEngine.checkCollision(
+            boardRef.current,
             pieceRef.current.shape,
             pieceRef.current.x,
             pieceRef.current.y + 1,
@@ -343,14 +384,17 @@ const TetrisGame = () => {
         ) {
           pieceRef.current.y++;
         }
+        clearLockTimer();
         placePiece();
         return;
       }
       if (e.code === 'KeyC' || e.code === 'ShiftLeft') {
+        clearLockTimer();
         handleHold();
         return;
       }
       if (e.code === 'Escape') {
+        clearLockTimer();
         setGameState('PAUSED');
         return;
       }
@@ -377,7 +421,7 @@ const TetrisGame = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, tryMove, handleHold, placePiece, startGame]);
+  }, [gameState, tryMove, handleHold, placePiece, startGame, clearLockTimer]);
 
   // --- Pause/Resume Countdown ---
   useEffect(() => {
