@@ -37,9 +37,19 @@ const TetrisGame = () => {
   const baseDropIntervalRef = useRef(1000);
   const lastTimeRef = useRef(0);
   const dropCounterRef = useRef(0);
+  const currentBagRef = useRef<number[]>([]);
 
   // --- Logic Helpers ---
-  const randPiece = () => TetrisEngine.createPiece();
+  const getNextPieceFromBag = useCallback(() => {
+    // If the bag is empty, refill and shuffle it
+    if (currentBagRef.current.length === 0) {
+      currentBagRef.current = TetrisEngine.generateBag();
+    }
+
+    // Pop the next piece type from the bag
+    const nextType = currentBagRef.current.pop()!;
+    return TetrisEngine.createPiece(nextType);
+  }, []);
 
   const collides = (s: number[][], px: number, py: number) => {
     return TetrisEngine.checkCollision(boardRef.current, s, px, py);
@@ -168,14 +178,14 @@ const TetrisGame = () => {
   // --- Game Actions ---
   const spawnPiece = useCallback(() => {
     const next = nextPiecesRef.current.shift()!;
-    nextPiecesRef.current.push(randPiece());
+    nextPiecesRef.current.push(getNextPieceFromBag());
     pieceRef.current = next;
     canHoldRef.current = true;
     if (collides(next.shape, next.x, next.y)) {
       setGameState('GAMEOVER');
     }
     drawSidebarCanvases();
-  }, [drawSidebarCanvases]);
+  }, [getNextPieceFromBag, drawSidebarCanvases]);
 
   const clearLines = useCallback(() => {
     let cleared = 0;
@@ -290,12 +300,18 @@ const TetrisGame = () => {
 
   const startGame = useCallback(() => {
     boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+
+    // 1. Initialize an empty bag
+    currentBagRef.current = [];
+
+    // 2. Populate the "Next" queue
     nextPiecesRef.current = [
-      randPiece(),
-      randPiece(),
-      randPiece(),
-      randPiece(),
+      getNextPieceFromBag(),
+      getNextPieceFromBag(),
+      getNextPieceFromBag(),
+      getNextPieceFromBag(),
     ];
+
     heldPieceRef.current = null;
     setScore(0);
     setLines(0);
@@ -304,7 +320,7 @@ const TetrisGame = () => {
     baseDropIntervalRef.current = 1000;
     spawnPiece();
     setGameState('PLAYING');
-  }, [spawnPiece]);
+  }, [getNextPieceFromBag, spawnPiece]);
 
   // --- Controls ---
   useEffect(() => {

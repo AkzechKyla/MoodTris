@@ -8,9 +8,24 @@ export type Piece = {
 };
 
 export const TetrisEngine = {
-  createPiece: (type?: number): Piece => {
-    const t = type ?? Math.floor(Math.random() * 7) + 1;
-    return { type: t, shape: SHAPES[t].map((r) => [...r]), x: 3, y: 0 };
+  generateBag: (): number[] => {
+    const bag = [1, 2, 3, 4, 5, 6, 7];
+
+    for (let i = bag.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [bag[i], bag[j]] = [bag[j], bag[i]];
+    }
+
+    return bag;
+  },
+
+  createPiece: (type: number): Piece => {
+    return {
+      type,
+      shape: SHAPES[type].map((r) => [...r]),
+      x: 3,
+      y: 0,
+    };
   },
 
   rotate: (matrix: number[][]): number[][] => {
