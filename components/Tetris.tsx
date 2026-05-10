@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
 import { useEmotionDetection } from '@/hooks/useEmotionDetection';
-import { TetrisEngine } from '@/utils/tetris-engine';
+import { TetrisEngine, Piece } from '@/utils/tetris-engine';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -29,9 +29,9 @@ const TetrisGame = () => {
   const boardRef = useRef(
     Array.from({ length: ROWS }, () => Array(COLS).fill(0)),
   );
-  const pieceRef = useRef<any>(null);
-  const nextPiecesRef = useRef<any[]>([]);
-  const heldPieceRef = useRef<any>(null);
+  const pieceRef = useRef<Piece | null>(null);
+  const nextPiecesRef = useRef<Piece[]>([]);
+  const heldPieceRef = useRef<Piece | null>(null);
   const canHoldRef = useRef(true);
   const dropIntervalRef = useRef(1000);
   const baseDropIntervalRef = useRef(1000);
@@ -117,7 +117,7 @@ const TetrisGame = () => {
   }, []);
 
   const drawSidebarCanvases = useCallback(() => {
-    const drawMini = (canvas: HTMLCanvasElement | null, p: any) => {
+    const drawMini = (canvas: HTMLCanvasElement | null, p: Piece | null) => {
       if (!canvas) return;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
@@ -127,8 +127,8 @@ const TetrisGame = () => {
       const sz = 16;
       const ox = (canvas.width / sz - p.shape[0].length) / 2;
       const oy = (canvas.height / sz - p.shape.length) / 2;
-      p.shape.forEach((row: any, r: number) => {
-        row.forEach((v: any, c: number) => {
+      p.shape.forEach((row: number[], r: number) => {
+        row.forEach((v: number, c: number) => {
           if (v) {
             ctx.fillStyle = COLORS[p.type];
             ctx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
@@ -153,8 +153,8 @@ const TetrisGame = () => {
         const sz = 14;
         const ox = (nextCanvasRef.current!.width / sz - p.shape[0].length) / 2;
         const oy = 1 + i * 4;
-        p.shape.forEach((row: any, r: number) => {
-          row.forEach((v: any, c: number) => {
+        p.shape.forEach((row: number[], r: number) => {
+          row.forEach((v: number, c: number) => {
             if (v) {
               nextCtx.fillStyle = COLORS[p.type];
               nextCtx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
@@ -167,7 +167,7 @@ const TetrisGame = () => {
 
   // --- Game Actions ---
   const spawnPiece = useCallback(() => {
-    const next = nextPiecesRef.current.shift();
+    const next = nextPiecesRef.current.shift()!;
     nextPiecesRef.current.push(randPiece());
     pieceRef.current = next;
     canHoldRef.current = true;
@@ -206,6 +206,7 @@ const TetrisGame = () => {
 
   const placePiece = useCallback(() => {
     const p = pieceRef.current;
+    if (!p) return;
     p.shape.forEach((row: number[], r: number) => {
       row.forEach((v: number, c: number) => {
         if (v && p.y + r >= 0) boardRef.current[p.y + r][p.x + c] = p.type;
@@ -220,6 +221,7 @@ const TetrisGame = () => {
       if (gameState !== 'PLAYING') return false;
 
       const p = pieceRef.current;
+      if (!p) return false;
       const nextShape = rotate ? TetrisEngine.rotate(p.shape) : p.shape;
 
       // Cleanly attempt movement
@@ -263,7 +265,8 @@ const TetrisGame = () => {
   );
 
   const handleHold = useCallback(() => {
-    if (!canHoldRef.current || gameState !== 'PLAYING') return;
+    if (!canHoldRef.current || gameState !== 'PLAYING' || !pieceRef.current)
+      return;
     canHoldRef.current = false;
     const currentType = pieceRef.current.type;
     const reset = (type: number) => ({
@@ -285,6 +288,24 @@ const TetrisGame = () => {
     render();
   }, [gameState, spawnPiece, render, drawSidebarCanvases]);
 
+  const startGame = useCallback(() => {
+    boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    nextPiecesRef.current = [
+      randPiece(),
+      randPiece(),
+      randPiece(),
+      randPiece(),
+    ];
+    heldPieceRef.current = null;
+    setScore(0);
+    setLines(0);
+    setLevel(1);
+    dropIntervalRef.current = 1000;
+    baseDropIntervalRef.current = 1000;
+    spawnPiece();
+    setGameState('PLAYING');
+  }, [spawnPiece]);
+
   // --- Controls ---
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -296,6 +317,7 @@ const TetrisGame = () => {
       }
       if (e.code === 'Space') {
         e.preventDefault();
+        if (!pieceRef.current) return;
         while (
           !collides(
             pieceRef.current.shape,
@@ -339,12 +361,11 @@ const TetrisGame = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, tryMove, handleHold, placePiece]);
+  }, [gameState, tryMove, handleHold, placePiece, startGame]);
 
   // --- Pause/Resume Countdown ---
   useEffect(() => {
     if (gameState !== 'RESUMING') return;
-    setCountdown(3);
     const interval = setInterval(() => {
       setCountdown((prev) => {
         if (prev <= 1) {
@@ -430,24 +451,6 @@ const TetrisGame = () => {
     return () => cancelAnimationFrame(raf);
   }, [gameState, tryMove, render]);
 
-  const startGame = () => {
-    boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-    nextPiecesRef.current = [
-      randPiece(),
-      randPiece(),
-      randPiece(),
-      randPiece(),
-    ];
-    heldPieceRef.current = null;
-    setScore(0);
-    setLines(0);
-    setLevel(1);
-    dropIntervalRef.current = 1000;
-    baseDropIntervalRef.current = 1000;
-    spawnPiece();
-    setGameState('PLAYING');
-  };
-
   return (
     <div className="flex items-start gap-3 select-none">
       {/* Left Panel */}
@@ -477,6 +480,10 @@ const TetrisGame = () => {
             Speed Level
           </div>
           <div className="text-sm text-white">{level}</div>
+        </div>
+        <div className="bg-[#1a1a1a] border-2 border-[#444] p-2">
+          <div className="text-[10px] text-gray-500 mb-1 uppercase">Lines</div>
+          <div className="text-sm text-white">{lines}</div>
         </div>
         <div className="text-[6px] text-[#1a4d1e] space-y-2 uppercase leading-relaxed tracking-wider">
           <div>
@@ -536,7 +543,10 @@ const TetrisGame = () => {
                 </div>
                 <div className="flex flex-col gap-4 w-3/4 items-center">
                   <button
-                    onClick={() => setGameState('RESUMING')}
+                    onClick={() => {
+                      setCountdown(3);
+                      setGameState('RESUMING');
+                    }}
                     className="w-full text-[9px] border-2 border-[#00ff41] text-[#00ff41] px-6 py-3 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest"
                     style={{ boxShadow: '0 0 12px rgba(0,255,65,0.4)' }}
                   >

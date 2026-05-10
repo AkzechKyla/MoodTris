@@ -85,14 +85,22 @@ export function useEmotionDetection(
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     videoRef.current = null;
-    setReady(false);
-    setEmotionState('unknown');
-    setEmotionScores(null);
+    setTimeout(() => {
+      setReady(false);
+      setEmotionState('unknown');
+      setEmotionScores(null);
+    }, 0);
   }, []);
 
   useEffect(() => {
-    if (enabled) start();
-    else stop();
+    const run = async () => {
+      if (enabled) {
+        await start();
+      } else {
+        stop();
+      }
+    };
+    run();
     return () => stop();
   }, [enabled, start, stop]);
 
