@@ -85,24 +85,24 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ## Controls
 
-| Key | Action |
-|-----|--------|
-| `←` `→` | Move piece |
-| `↑` | Rotate clockwise |
-| `↓` | Soft drop |
-| `Space` | Hard drop |
-| `C` / `Left Shift` | Hold piece |
-| `Esc` | Pause / Resume |
+| Key                | Action           |
+| ------------------ | ---------------- |
+| `←` `→`            | Move piece       |
+| `↑`                | Rotate clockwise |
+| `↓`                | Soft drop        |
+| `Space`            | Hard drop        |
+| `C` / `Left Shift` | Hold piece       |
+| `Esc`              | Pause / Resume   |
 
 ---
 
 ## Scoring
 
-| Lines Cleared | Points |
-|---------------|--------|
-| 1 line | 100 × level |
-| 2 lines | 300 × level |
-| 3 lines | 500 × level |
+| Lines Cleared    | Points      |
+| ---------------- | ----------- |
+| 1 line           | 100 × level |
+| 2 lines          | 300 × level |
+| 3 lines          | 500 × level |
 | 4 lines (Tetris) | 800 × level |
 
 Level increases every **10 lines** cleared, which also speeds up the auto drop. The mood system can temporarily nudge the level up or down on top of this.

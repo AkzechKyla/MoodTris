@@ -638,9 +638,12 @@ const TetrisGame = () => {
 
           {!emotionEnabled ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center opacity-50 space-y-2 mt-4 pt-4 border-t border-[#333]">
-              <div className="text-[8px] text-gray-400 tracking-widest">AWAITING MOOD CAM</div>
+              <div className="text-[8px] text-gray-400 tracking-widest">
+                AWAITING MOOD CAM
+              </div>
               <div className="text-[6px] text-gray-500 leading-relaxed px-2">
-                ENABLE TO DYNAMICALLY ADJUST SPEED BASED ON YOUR FACIAL EXPRESSIONS.
+                ENABLE TO DYNAMICALLY ADJUST SPEED BASED ON YOUR FACIAL
+                EXPRESSIONS.
               </div>
             </div>
           ) : (
@@ -773,7 +776,9 @@ const TetrisGame = () => {
               className="w-full scale-x-[-1]"
             />
           ) : (
-            <div className="text-[6px] text-[#333] tracking-widest">CAMERA OFFLINE</div>
+            <div className="text-[6px] text-[#333] tracking-widest">
+              CAMERA OFFLINE
+            </div>
           )}
         </div>
       </div>
