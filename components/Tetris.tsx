@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { COLS, ROWS, BLOCK_SIZE, COLORS, SHAPES } from '@/constants/tetris';
 import { useEmotionDetection } from '@/hooks/useEmotionDetection';
+import { TetrisEngine } from '@/utils/tetris-engine';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,30 +39,10 @@ const TetrisGame = () => {
   const dropCounterRef = useRef(0);
 
   // --- Logic Helpers ---
-  const randPiece = () => {
-    const t = Math.floor(Math.random() * 7) + 1;
-    return { type: t, shape: SHAPES[t].map((r) => [...r]), x: 3, y: 0 };
-  };
-
-  const rotateCW = (s: number[][]) => {
-    const R = s.length,
-      C = s[0].length;
-    const n = Array.from({ length: C }, () => Array(R).fill(0));
-    for (let r = 0; r < R; r++)
-      for (let c = 0; c < C; c++) n[c][R - 1 - r] = s[r][c];
-    return n;
-  };
+  const randPiece = () => TetrisEngine.createPiece();
 
   const collides = (s: number[][], px: number, py: number) => {
-    for (let r = 0; r < s.length; r++)
-      for (let c = 0; c < s[r].length; c++) {
-        if (!s[r][c]) continue;
-        const nx = px + c,
-          ny = py + r;
-        if (nx < 0 || nx >= COLS || ny >= ROWS) return true;
-        if (ny >= 0 && boardRef.current[ny][nx]) return true;
-      }
-    return false;
+    return TetrisEngine.checkCollision(boardRef.current, s, px, py);
   };
 
   // --- Drawing ---
@@ -236,33 +217,49 @@ const TetrisGame = () => {
 
   const tryMove = useCallback(
     (dx: number, dy: number, rotate = false) => {
-      if (gameState !== 'PLAYING') return;
-      let p = pieceRef.current;
-      let ns = rotate ? rotateCW(p.shape) : p.shape;
-      let nx = p.x + dx;
-      let ny = p.y + dy;
+      if (gameState !== 'PLAYING') return false;
 
-      if (!collides(ns, nx, ny)) {
-        pieceRef.current = { ...p, shape: ns, x: nx, y: ny };
-        render();
-        return true;
-      } else if (rotate) {
-        // Simple wall kick
-        if (!collides(ns, nx + 1, ny)) {
-          nx++;
-        } else if (!collides(ns, nx - 1, ny)) {
-          nx--;
-        } else {
-          return false;
-        }
-        pieceRef.current = { ...p, shape: ns, x: nx, y: ny };
+      const p = pieceRef.current;
+      const nextShape = rotate ? TetrisEngine.rotate(p.shape) : p.shape;
+
+      // Cleanly attempt movement
+      if (
+        !TetrisEngine.checkCollision(
+          boardRef.current,
+          nextShape,
+          p.x + dx,
+          p.y + dy,
+        )
+      ) {
+        pieceRef.current = { ...p, shape: nextShape, x: p.x + dx, y: p.y + dy };
         render();
         return true;
       }
+
+      // Handle Wall Kicks via shared engine logic
+      if (rotate) {
+        const kickedX = TetrisEngine.attemptWallKick(
+          boardRef.current,
+          nextShape,
+          p.x + dx,
+          p.y + dy,
+        );
+        if (kickedX !== null) {
+          pieceRef.current = {
+            ...p,
+            shape: nextShape,
+            x: kickedX,
+            y: p.y + dy,
+          };
+          render();
+          return true;
+        }
+      }
+
       if (dy > 0) placePiece();
       return false;
     },
-    [gameState, placePiece, render],
+    [gameState, render, placePiece],
   );
 
   const handleHold = useCallback(() => {
