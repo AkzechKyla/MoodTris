@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useTetris } from '@/hooks/useTetris';
 import { TetrisRenderer } from '@/utils/tetris-renderer';
 import { Leaderboard } from '@/components/Leaderboard';
+import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -53,6 +54,11 @@ const TetrisGame = () => {
     'idle' | 'saving' | 'saved' | 'error'
   >('idle');
   const [leaderboardRefresh, setLeaderboardRefresh] = useState(0);
+  const {
+    scores,
+    loading,
+    error: leaderboardError,
+  } = useLeaderboard(leaderboardRefresh);
 
   const startGame = useCallback(() => {
     setScoreSaved('idle');
@@ -60,14 +66,17 @@ const TetrisGame = () => {
   }, [rawStartGame]);
 
   const [emotionEnabled, setEmotionEnabled] = useState(false);
-  const { emotionState, emotionScores, ready, error } = useEmotionDetection(
-    emotionEnabled,
-    videoElRef,
-  );
+  const {
+    emotionState,
+    emotionScores,
+    ready,
+    error: emotionError,
+  } = useEmotionDetection(emotionEnabled, videoElRef);
 
   // --- Score Saving ---
   useEffect(() => {
-    if (gameState !== 'GAMEOVER' || !isLoggedIn) return;
+    if (gameState !== 'GAMEOVER' || !isLoggedIn || scoreSaved !== 'idle')
+      return;
 
     const timer = setTimeout(() => {
       setScoreSaved('saving');
@@ -77,7 +86,7 @@ const TetrisGame = () => {
       });
     }, 0);
     return () => clearTimeout(timer);
-  }, [gameState, isLoggedIn, level, lines, saveScore, score]);
+  }, [gameState, isLoggedIn, level, lines, saveScore, score, scoreSaved]);
 
   useEffect(() => {
     if (!emotionEnabled || gameState !== 'PLAYING') return;
@@ -286,8 +295,10 @@ const TetrisGame = () => {
               </div>
             ) : (
               <div className="text-[9px] leading-relaxed flex-1">
-                {error && <div className="text-red-400">{error}</div>}
-                {!ready && !error && (
+                {emotionError && (
+                  <div className="text-red-400">{emotionError}</div>
+                )}
+                {!ready && !emotionError && (
                   <div className="text-gray-600 animate-pulse">Loading...</div>
                 )}
                 {ready && (
@@ -476,7 +487,9 @@ const TetrisGame = () => {
 
             <div className="w-full">
               <Leaderboard
-                refreshToken={leaderboardRefresh}
+                scores={scores}
+                loading={loading}
+                error={leaderboardError}
                 currentUserId={session?.user?.id}
               />
             </div>

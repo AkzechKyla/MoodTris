@@ -1,15 +1,20 @@
 'use client';
 
-import { useLeaderboard } from '@/hooks/useLeaderboard';
+import { Score } from '@/lib/supabase';
 
 interface LeaderboardProps {
-  refreshToken: number;
+  scores: Score[];
+  loading: boolean;
+  error: string | null;
   currentUserId?: string;
 }
 
-export function Leaderboard({ refreshToken, currentUserId }: LeaderboardProps) {
-  const { scores, loading, error } = useLeaderboard(refreshToken);
-
+export function Leaderboard({
+  scores,
+  loading,
+  error,
+  currentUserId,
+}: LeaderboardProps) {
   return (
     <div className="pixel-panel glow-border p-3 w-full max-w-[680px]">
       {/* Header */}
