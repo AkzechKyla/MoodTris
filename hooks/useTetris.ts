@@ -242,6 +242,7 @@ export function useTetris(onRender: () => void) {
       }
       if (e.code === 'Space') {
         e.preventDefault();
+        if (gameState !== 'PLAYING') return;
         if (!pieceRef.current) return;
         while (
           !TetrisEngine.checkCollision(
@@ -263,6 +264,7 @@ export function useTetris(onRender: () => void) {
         return;
       }
       if (e.code === 'Escape') {
+        if (gameState !== 'PLAYING') return;
         clearLockTimer();
         setGameState('PAUSED');
         return;
