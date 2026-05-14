@@ -25,6 +25,7 @@ const TetrisGame = () => {
     setCountdown,
     setLevel,
     startGame: rawStartGame,
+    resetGame,
     boardRef,
     pieceRef,
     nextPiecesRef,
@@ -481,7 +482,7 @@ const TetrisGame = () => {
             </div>
 
             <button
-              onClick={startGame}
+              onClick={resetGame}
               className="text-[12px] border-2 border-[#00ff41] text-[#00ff41] px-12 py-4 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest bg-black/50"
               style={{ boxShadow: '0 0 16px rgba(0,255,65,0.4)' }}
             >

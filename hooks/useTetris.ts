@@ -190,6 +190,19 @@ export function useTetris(onRender: () => void) {
     onRender();
   }, [gameState, spawnPiece, onRender]);
 
+  const resetGame = useCallback(() => {
+    boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
+    currentBagRef.current = [];
+    nextPiecesRef.current = [];
+    heldPieceRef.current = null;
+    pieceRef.current = null;
+    setScore(0);
+    setLines(0);
+    setLevel(1);
+    setGameState('IDLE');
+    onRender();
+  }, [onRender]);
+
   const startGame = useCallback(() => {
     boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
     currentBagRef.current = [];
@@ -213,6 +226,15 @@ export function useTetris(onRender: () => void) {
   // Handle Controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore key events if the user is typing in an input or textarea
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLButtonElement
+      ) {
+        return;
+      }
+
       if (e.code === 'ArrowUp') {
         e.preventDefault();
         tryMove(0, 0, true);
@@ -346,6 +368,7 @@ export function useTetris(onRender: () => void) {
     setCountdown,
     setLevel,
     startGame,
+    resetGame,
     boardRef,
     pieceRef,
     nextPiecesRef,
