@@ -32,15 +32,23 @@ export function useAuth() {
   // Fetch profile whenever session changes
   useEffect(() => {
     if (!session?.user) {
-      setProfile(null);
-      return;
+      const timer = setTimeout(() => setProfile(null), 0);
+      return () => clearTimeout(timer);
     }
+
+    let isMounted = true;
     supabase
       .from('profiles')
       .select('*')
       .eq('id', session.user.id)
       .single()
-      .then(({ data }) => setProfile(data ?? null));
+      .then(({ data }) => {
+        if (isMounted) setProfile(data ?? null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [session]);
 
   // Sign Up

@@ -1,460 +1,79 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import {
-  COLS,
-  ROWS,
-  BLOCK_SIZE,
-  COLORS,
-  SHAPES,
-  LOCK_DELAY,
-} from '@/constants/tetris';
 import { useEmotionDetection } from '@/hooks/useEmotionDetection';
-import { TetrisEngine, Piece } from '@/utils/tetris-engine';
 import { useAuth } from '@/hooks/useAuth';
+import { useTetris } from '@/hooks/useTetris';
+import { TetrisRenderer } from '@/utils/tetris-renderer';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const holdCanvasRef = useRef<HTMLCanvasElement>(null);
-  const keysHeldRef = useRef<Set<string>>(new Set());
   const videoElRef = useRef<HTMLVideoElement>(null);
-  const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [score, setScore] = useState(0);
-  const [lines, setLines] = useState(0);
-  const [level, setLevel] = useState(1);
-  const [gameState, setGameState] = useState<
-    'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER'
-  >('IDLE');
-  const [countdown, setCountdown] = useState(3);
+  const renderRef = useRef<() => void>(() => {});
+
+  const {
+    score,
+    lines,
+    level,
+    gameState,
+    countdown,
+    setGameState,
+    setCountdown,
+    setLevel,
+    startGame: rawStartGame,
+    boardRef,
+    pieceRef,
+    nextPiecesRef,
+    heldPieceRef,
+    dropIntervalRef,
+    baseDropIntervalRef,
+    collides,
+  } = useTetris(() => renderRef.current());
+
+  useEffect(() => {
+    renderRef.current = () => {
+      TetrisRenderer.renderBoard(
+        canvasRef.current,
+        boardRef.current,
+        pieceRef.current,
+        collides,
+      );
+      TetrisRenderer.renderHold(holdCanvasRef.current, heldPieceRef.current);
+      TetrisRenderer.renderNext(nextCanvasRef.current, nextPiecesRef.current);
+    };
+  }, [boardRef, pieceRef, collides, heldPieceRef, nextPiecesRef]);
+
+  const { isLoggedIn, saveScore } = useAuth();
+  const [scoreSaved, setScoreSaved] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
+
+  const startGame = useCallback(() => {
+    setScoreSaved('idle');
+    rawStartGame();
+  }, [rawStartGame]);
+
   const [emotionEnabled, setEmotionEnabled] = useState(false);
   const { emotionState, emotionScores, ready, error } = useEmotionDetection(
     emotionEnabled,
     videoElRef,
   );
 
-  const { isLoggedIn, profile, saveScore } = useAuth();
-  const [scoreSaved, setScoreSaved] = useState<
-    'idle' | 'saving' | 'saved' | 'error'
-  >('idle');
-
-  // Ref-based state to prevent closure issues in the game loop
-  const boardRef = useRef(
-    Array.from({ length: ROWS }, () => Array(COLS).fill(0)),
-  );
-  const pieceRef = useRef<Piece | null>(null);
-  const nextPiecesRef = useRef<Piece[]>([]);
-  const heldPieceRef = useRef<Piece | null>(null);
-  const canHoldRef = useRef(true);
-  const dropIntervalRef = useRef(1000);
-  const baseDropIntervalRef = useRef(1000);
-  const lastTimeRef = useRef(0);
-  const dropCounterRef = useRef(0);
-  const currentBagRef = useRef<number[]>([]);
-
-  // --- Logic Helpers ---
-  const getNextPieceFromBag = useCallback(() => {
-    // If the bag is empty, refill and shuffle it
-    if (currentBagRef.current.length === 0) {
-      currentBagRef.current = TetrisEngine.generateBag();
-    }
-
-    // Pop the next piece type from the bag
-    const nextType = currentBagRef.current.pop()!;
-    return TetrisEngine.createPiece(nextType);
-  }, []);
-
-  const collides = (s: number[][], px: number, py: number) => {
-    return TetrisEngine.checkCollision(boardRef.current, s, px, py);
-  };
-
-  // --- Drawing ---
-  const drawBlock = (
-    ctx: CanvasRenderingContext2D,
-    type: number,
-    x: number,
-    y: number,
-    size: number,
-  ) => {
-    ctx.fillStyle = COLORS[type];
-    ctx.fillRect(x * size, y * size, size, size);
-    ctx.fillStyle = 'rgba(255,255,255,0.25)';
-    ctx.fillRect(x * size, y * size, size, 3);
-    ctx.fillRect(x * size, y * size, 3, size);
-    ctx.fillStyle = 'rgba(0,0,0,0.30)';
-    ctx.fillRect(x * size + size - 3, y * size, 3, size);
-    ctx.fillRect(x * size, y * size + size - 3, size, 3);
-  };
-
-  const render = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Clear board
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw grid lines
-    ctx.strokeStyle = '#222';
-    ctx.lineWidth = 0.5;
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        ctx.strokeRect(c * BLOCK_SIZE, r * BLOCK_SIZE, BLOCK_SIZE, BLOCK_SIZE);
-        if (boardRef.current[r][c]) {
-          drawBlock(ctx, boardRef.current[r][c], c, r, BLOCK_SIZE);
-        }
-      }
-    }
-
-    const piece = pieceRef.current;
-    if (piece) {
-      // Ghost Piece
-      let gy = piece.y;
-      while (!collides(piece.shape, piece.x, gy + 1)) gy++;
-      ctx.globalAlpha = 0.2;
-      piece.shape.forEach((row: number[], r: number) => {
-        row.forEach((v: number, c: number) => {
-          if (v) {
-            ctx.fillStyle = COLORS[piece.type];
-            ctx.fillRect(
-              (piece.x + c) * BLOCK_SIZE,
-              (gy + r) * BLOCK_SIZE,
-              BLOCK_SIZE,
-              BLOCK_SIZE,
-            );
-          }
-        });
-      });
-      ctx.globalAlpha = 1;
-
-      // Active Piece
-      piece.shape.forEach((row: number[], r: number) => {
-        row.forEach((v: number, c: number) => {
-          if (v)
-            drawBlock(ctx, piece.type, piece.x + c, piece.y + r, BLOCK_SIZE);
-        });
-      });
-    }
-  }, []);
-
-  const drawSidebarCanvases = useCallback(() => {
-    const drawMini = (canvas: HTMLCanvasElement | null, p: Piece | null) => {
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-      ctx.fillStyle = '#1a1a1a';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      if (!p) return;
-      const sz = 16;
-      const ox = (canvas.width / sz - p.shape[0].length) / 2;
-      const oy = (canvas.height / sz - p.shape.length) / 2;
-      p.shape.forEach((row: number[], r: number) => {
-        row.forEach((v: number, c: number) => {
-          if (v) {
-            ctx.fillStyle = COLORS[p.type];
-            ctx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
-          }
-        });
-      });
-    };
-
-    drawMini(holdCanvasRef.current, heldPieceRef.current);
-
-    // Draw Next (Showing top 3)
-    const nextCtx = nextCanvasRef.current?.getContext('2d');
-    if (nextCtx && nextCanvasRef.current) {
-      nextCtx.fillStyle = '#1a1a1a';
-      nextCtx.fillRect(
-        0,
-        0,
-        nextCanvasRef.current.width,
-        nextCanvasRef.current.height,
-      );
-      nextPiecesRef.current.slice(0, 3).forEach((p, i) => {
-        const sz = 14;
-        const ox = (nextCanvasRef.current!.width / sz - p.shape[0].length) / 2;
-        const oy = 1 + i * 4;
-        p.shape.forEach((row: number[], r: number) => {
-          row.forEach((v: number, c: number) => {
-            if (v) {
-              nextCtx.fillStyle = COLORS[p.type];
-              nextCtx.fillRect((ox + c) * sz, (oy + r) * sz, sz - 1, sz - 1);
-            }
-          });
-        });
-      });
-    }
-  }, []);
-
-  // --- Game Actions ---
-  const spawnPiece = useCallback(() => {
-    const next = nextPiecesRef.current.shift()!;
-    nextPiecesRef.current.push(getNextPieceFromBag());
-    pieceRef.current = next;
-    canHoldRef.current = true;
-    if (collides(next.shape, next.x, next.y)) {
-      setGameState('GAMEOVER');
-    }
-    drawSidebarCanvases();
-  }, [getNextPieceFromBag, drawSidebarCanvases]);
-
-  const clearLines = useCallback(() => {
-    let cleared = 0;
-    const newBoard = [...boardRef.current];
-    for (let r = ROWS - 1; r >= 0; r--) {
-      if (newBoard[r].every((v) => v !== 0)) {
-        newBoard.splice(r, 1);
-        newBoard.unshift(Array(COLS).fill(0));
-        cleared++;
-        r++;
-      }
-    }
-    if (cleared > 0) {
-      const pts = [0, 100, 300, 500, 800];
-      setScore((s) => s + pts[cleared] * level);
-      setLines((l) => {
-        const total = l + cleared;
-        const newLevel = Math.floor(total / 10) + 1;
-        setLevel(newLevel);
-        const base = Math.max(50, 1000 - (newLevel - 1) * 90);
-        baseDropIntervalRef.current = base;
-        dropIntervalRef.current = base;
-        return total;
-      });
-      boardRef.current = newBoard;
-    }
-  }, [level]);
-
-  const clearLockTimer = useCallback(() => {
-    if (lockTimerRef.current) {
-      clearTimeout(lockTimerRef.current);
-      lockTimerRef.current = null;
-    }
-  }, []);
-
-  const placePiece = useCallback(() => {
-    clearLockTimer();
-    const p = pieceRef.current;
-    if (!p) return;
-    p.shape.forEach((row: number[], r: number) => {
-      row.forEach((v: number, c: number) => {
-        if (v && p.y + r >= 0) boardRef.current[p.y + r][p.x + c] = p.type;
-      });
-    });
-    clearLines();
-    spawnPiece();
-  }, [clearLines, spawnPiece, clearLockTimer]);
-
-  const tryMove = useCallback(
-    (dx: number, dy: number, rotate = false) => {
-      if (gameState !== 'PLAYING') return false;
-
-      const p = pieceRef.current;
-      if (!p) return false;
-
-      const nextShape = rotate ? TetrisEngine.rotate(p.shape) : p.shape;
-      const nextX = p.x + dx;
-      const nextY = p.y + dy;
-
-      if (
-        !TetrisEngine.checkCollision(boardRef.current, nextShape, nextX, nextY)
-      ) {
-        pieceRef.current = { ...p, shape: nextShape, x: nextX, y: nextY };
-
-        const isTouchingFloor = TetrisEngine.checkCollision(
-          boardRef.current,
-          nextShape,
-          nextX,
-          nextY + 1,
-        );
-
-        if (isTouchingFloor) {
-          clearLockTimer();
-          lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
-        } else {
-          clearLockTimer();
-        }
-
-        render();
-        return true;
-      }
-
-      if (rotate) {
-        const kickedX = TetrisEngine.attemptWallKick(
-          boardRef.current,
-          nextShape,
-          nextX,
-          nextY,
-        );
-        if (kickedX !== null) {
-          pieceRef.current = { ...p, shape: nextShape, x: kickedX, y: nextY };
-
-          if (
-            TetrisEngine.checkCollision(
-              boardRef.current,
-              nextShape,
-              kickedX,
-              nextY + 1,
-            )
-          ) {
-            clearLockTimer();
-            lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
-          }
-
-          render();
-          return true;
-        }
-      }
-
-      if (dy > 0) {
-        if (!lockTimerRef.current) {
-          lockTimerRef.current = setTimeout(placePiece, LOCK_DELAY);
-        }
-      }
-
-      return false;
-    },
-    [gameState, render, placePiece, clearLockTimer],
-  );
-
-  const handleHold = useCallback(() => {
-    if (!canHoldRef.current || gameState !== 'PLAYING' || !pieceRef.current)
-      return;
-    canHoldRef.current = false;
-    const currentType = pieceRef.current.type;
-    const reset = (type: number) => ({
-      type,
-      shape: SHAPES[type].map((r) => [...r]),
-      x: 3,
-      y: 0,
-    });
-
-    if (!heldPieceRef.current) {
-      heldPieceRef.current = reset(currentType);
-      spawnPiece();
-    } else {
-      const tmp = heldPieceRef.current.type;
-      heldPieceRef.current = reset(currentType);
-      pieceRef.current = reset(tmp);
-    }
-    drawSidebarCanvases();
-    render();
-  }, [gameState, spawnPiece, render, drawSidebarCanvases]);
-
-  const startGame = useCallback(() => {
-    boardRef.current = Array.from({ length: ROWS }, () => Array(COLS).fill(0));
-
-    // 1. Initialize an empty bag
-    currentBagRef.current = [];
-
-    // 2. Populate the "Next" queue
-    nextPiecesRef.current = [
-      getNextPieceFromBag(),
-      getNextPieceFromBag(),
-      getNextPieceFromBag(),
-      getNextPieceFromBag(),
-    ];
-
-    heldPieceRef.current = null;
-    setScore(0);
-    setLines(0);
-    setLevel(1);
-    setScoreSaved('idle');
-    dropIntervalRef.current = 1000;
-    baseDropIntervalRef.current = 1000;
-    spawnPiece();
-    setGameState('PLAYING');
-  }, [getNextPieceFromBag, spawnPiece]);
-
-  // --- Controls ---
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // One-shot actions
-      if (e.code === 'ArrowUp') {
-        e.preventDefault();
-        tryMove(0, 0, true);
-        return;
-      }
-      if (e.code === 'Space') {
-        e.preventDefault();
-        if (!pieceRef.current) return;
-        while (
-          !TetrisEngine.checkCollision(
-            boardRef.current,
-            pieceRef.current.shape,
-            pieceRef.current.x,
-            pieceRef.current.y + 1,
-          )
-        ) {
-          pieceRef.current.y++;
-        }
-        clearLockTimer();
-        placePiece();
-        return;
-      }
-      if (e.code === 'KeyC' || e.code === 'ShiftLeft') {
-        clearLockTimer();
-        handleHold();
-        return;
-      }
-      if (e.code === 'Escape') {
-        clearLockTimer();
-        setGameState('PAUSED');
-        return;
-      }
-      if (
-        e.code === 'Enter' &&
-        gameState !== 'PLAYING' &&
-        gameState !== 'PAUSED'
-      ) {
-        startGame();
-        return;
-      }
-
-      // Held keys
-      keysHeldRef.current.add(e.code);
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysHeldRef.current.delete(e.code);
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-    };
-  }, [gameState, tryMove, handleHold, placePiece, startGame, clearLockTimer]);
-
   // --- Score Saving ---
   useEffect(() => {
     if (gameState !== 'GAMEOVER' || !isLoggedIn) return;
 
-    setScoreSaved('saving');
-    saveScore(score, lines, level).then((err) => {
-      setScoreSaved(err ? 'error' : 'saved');
-    });
-  }, [gameState]); // intentionally only re-run on gameState change
-
-  // --- Pause/Resume Countdown ---
-  useEffect(() => {
-    if (gameState !== 'RESUMING') return;
-    const interval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          setGameState('PLAYING');
-          return 3;
-        }
-        return prev - 1;
+    const timer = setTimeout(() => {
+      setScoreSaved('saving');
+      saveScore(score, lines, level).then((err) => {
+        setScoreSaved(err ? 'error' : 'saved');
       });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [gameState]);
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [gameState, isLoggedIn, level, lines, saveScore, score]);
 
   useEffect(() => {
     if (!emotionEnabled || gameState !== 'PLAYING') return;
@@ -470,63 +89,14 @@ const TetrisGame = () => {
       baseDropIntervalRef.current = base;
       return newLevel;
     });
-  }, [emotionState, emotionEnabled, gameState]);
-
-  // --- Game Loop ---
-  useEffect(() => {
-    let raf: number;
-    const moveRepeatInterval = 50; // ms between moves while held
-    const moveRepeatDelay = 150; // ms before repeat starts (DAS)
-    const keyTimers = new Map<string, { last: number; started: number }>();
-
-    const loop = (time: number) => {
-      if (gameState === 'PLAYING') {
-        const dt = time - lastTimeRef.current;
-        lastTimeRef.current = time;
-
-        // Handle held movement keys with DAS (Delayed Auto Shift)
-        for (const code of ['ArrowLeft', 'ArrowRight', 'ArrowDown']) {
-          if (keysHeldRef.current.has(code)) {
-            const timer = keyTimers.get(code);
-            if (!timer) {
-              // First frame key is held — move immediately
-              if (code === 'ArrowLeft') tryMove(-1, 0);
-              else if (code === 'ArrowRight') tryMove(1, 0);
-              else if (code === 'ArrowDown') {
-                tryMove(0, 1);
-              }
-              keyTimers.set(code, { last: time, started: time });
-            } else {
-              const elapsed = time - timer.started;
-              if (
-                elapsed >= moveRepeatDelay &&
-                time - timer.last >= moveRepeatInterval
-              ) {
-                if (code === 'ArrowLeft') tryMove(-1, 0);
-                else if (code === 'ArrowRight') tryMove(1, 0);
-                else if (code === 'ArrowDown') {
-                  tryMove(0, 1);
-                }
-                keyTimers.set(code, { ...timer, last: time });
-              }
-            }
-          } else {
-            keyTimers.delete(code); // Key released — reset timer
-          }
-        }
-
-        dropCounterRef.current += dt;
-        if (dropCounterRef.current >= dropIntervalRef.current) {
-          tryMove(0, 1);
-          dropCounterRef.current = 0;
-        }
-        render();
-      }
-      raf = requestAnimationFrame(loop);
-    };
-    raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
-  }, [gameState, tryMove, render]);
+  }, [
+    emotionState,
+    emotionEnabled,
+    gameState,
+    setLevel,
+    dropIntervalRef,
+    baseDropIntervalRef,
+  ]);
 
   return (
     <div className="flex items-start gap-3 select-none">
