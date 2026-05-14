@@ -53,7 +53,7 @@ body::after {
     rgba(0, 0, 0, 0.85) 100%
   );
   pointer-events: none;
-  z-index: 9998;
+  z-index: 9997;
 }
 
 /* Phosphor flicker animation */

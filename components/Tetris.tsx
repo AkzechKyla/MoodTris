@@ -11,6 +11,7 @@ import {
 } from '@/constants/tetris';
 import { useEmotionDetection } from '@/hooks/useEmotionDetection';
 import { TetrisEngine, Piece } from '@/utils/tetris-engine';
+import { useAuth } from '@/hooks/useAuth';
 
 const TetrisGame = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -32,6 +33,11 @@ const TetrisGame = () => {
     emotionEnabled,
     videoElRef,
   );
+
+  const { isLoggedIn, profile, saveScore } = useAuth();
+  const [scoreSaved, setScoreSaved] = useState<
+    'idle' | 'saving' | 'saved' | 'error'
+  >('idle');
 
   // Ref-based state to prevent closure issues in the game loop
   const boardRef = useRef(
@@ -356,6 +362,7 @@ const TetrisGame = () => {
     setScore(0);
     setLines(0);
     setLevel(1);
+    setScoreSaved('idle');
     dropIntervalRef.current = 1000;
     baseDropIntervalRef.current = 1000;
     spawnPiece();
@@ -422,6 +429,16 @@ const TetrisGame = () => {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [gameState, tryMove, handleHold, placePiece, startGame, clearLockTimer]);
+
+  // --- Score Saving ---
+  useEffect(() => {
+    if (gameState !== 'GAMEOVER' || !isLoggedIn) return;
+
+    setScoreSaved('saving');
+    saveScore(score, lines, level).then((err) => {
+      setScoreSaved(err ? 'error' : 'saved');
+    });
+  }, [gameState]); // intentionally only re-run on gameState change
 
   // --- Pause/Resume Countdown ---
   useEffect(() => {
@@ -647,7 +664,7 @@ const TetrisGame = () => {
                   FINAL SCORE
                 </div>
                 <div
-                  className="vt text-4xl mb-8"
+                  className="vt text-4xl mb-6"
                   style={{
                     color: 'var(--glow-yellow)',
                     textShadow: '0 0 12px #ffd700',
@@ -655,6 +672,33 @@ const TetrisGame = () => {
                 >
                   {score}
                 </div>
+
+                {isLoggedIn && (
+                  <div className="text-[7px] tracking-widest mb-6">
+                    {scoreSaved === 'saving' && (
+                      <span className="text-[#4a7a50] animate-pulse">
+                        SAVING SCORE...
+                      </span>
+                    )}
+                    {scoreSaved === 'saved' && (
+                      <span
+                        className="text-[#00ff41]"
+                        style={{ textShadow: '0 0 8px #00ff41' }}
+                      >
+                        ✓ SCORE SAVED
+                      </span>
+                    )}
+                    {scoreSaved === 'error' && (
+                      <span className="text-[#ff3131]">✗ SAVE FAILED</span>
+                    )}
+                  </div>
+                )}
+                {!isLoggedIn && (
+                  <div className="text-[6px] text-[#1a4d1e] tracking-widest mb-6">
+                    SIGN IN TO SAVE YOUR SCORE
+                  </div>
+                )}
+
                 <button
                   onClick={startGame}
                   className="text-[9px] border-2 border-[#00ff41] text-[#00ff41] px-6 py-3 hover:bg-[#00ff41] hover:text-[#020b04] transition tracking-widest"
