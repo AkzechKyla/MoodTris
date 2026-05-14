@@ -2,7 +2,13 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { COLS, ROWS, SHAPES, LOCK_DELAY } from '@/constants/tetris';
 import { TetrisEngine, Piece } from '@/utils/tetris-engine';
 
-export type GameState = 'IDLE' | 'PLAYING' | 'PAUSED' | 'RESUMING' | 'GAMEOVER';
+export type GameState =
+  | 'IDLE'
+  | 'PLAYING'
+  | 'PAUSED'
+  | 'RESUMING'
+  | 'STARTING'
+  | 'GAMEOVER';
 
 export function useTetris(onRender: () => void) {
   const [score, setScore] = useState(0);
@@ -200,7 +206,8 @@ export function useTetris(onRender: () => void) {
     dropIntervalRef.current = 1000;
     baseDropIntervalRef.current = 1000;
     spawnPiece();
-    setGameState('PLAYING');
+    setCountdown(3);
+    setGameState('STARTING');
   }, [getNextPieceFromBag, spawnPiece]);
 
   // Handle Controls
@@ -241,7 +248,9 @@ export function useTetris(onRender: () => void) {
       if (
         e.code === 'Enter' &&
         gameState !== 'PLAYING' &&
-        gameState !== 'PAUSED'
+        gameState !== 'PAUSED' &&
+        gameState !== 'RESUMING' &&
+        gameState !== 'STARTING'
       ) {
         startGame();
         return;
@@ -260,6 +269,22 @@ export function useTetris(onRender: () => void) {
       window.removeEventListener('keyup', handleKeyUp);
     };
   }, [gameState, tryMove, handleHold, placePiece, startGame, clearLockTimer]);
+
+  // Pause / Resume Countdown
+  useEffect(() => {
+    if (gameState !== 'RESUMING' && gameState !== 'STARTING') return;
+    const interval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setGameState('PLAYING');
+          return 3;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [gameState]);
 
   // Handle Game Loop
   useEffect(() => {

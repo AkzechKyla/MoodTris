@@ -209,6 +209,16 @@ const TetrisGame = () => {
                 </div>
               </>
             )}
+            {gameState === 'STARTING' && (
+              <>
+                <div className="text-[9px] text-[#4a7a50] mb-4 tracking-widest">
+                  STARTING IN
+                </div>
+                <div className="vt text-8xl glow-text glow-text-animate">
+                  {countdown}
+                </div>
+              </>
+            )}
             {gameState === 'RESUMING' && (
               <>
                 <div className="text-[9px] text-[#4a7a50] mb-4 tracking-widest">
