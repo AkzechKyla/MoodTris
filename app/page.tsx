@@ -1,16 +1,25 @@
 import TetrisGame from '@/components/Tetris';
+import { UserHUD } from '@/components/UserHUD';
 
 export default function Home() {
   return (
     <main className="crt flex min-h-screen flex-col items-center justify-center bg-[#020b04] p-4">
       {/* Header */}
-      <div className="mb-6 text-center">
-        <h1 className="glow-text glow-text-animate text-2xl tracking-widest mb-1">
-          MOODTRIS
-        </h1>
-        <p className="text-[8px] text-[#4a7a50] tracking-widest">
-          EMOTION-AWARE TETRIS v1.0
-        </p>
+      <div className="flex w-full mb-6 items-start justify-between px-4 md:px-8">
+        <div className="flex-1"></div>
+
+        <div className="text-center w-full max-w-2xl">
+          <h1 className="glow-text glow-text-animate text-2xl tracking-widest mb-1">
+            MOODTRIS
+          </h1>
+          <p className="text-[8px] text-[#4a7a50] tracking-widest">
+            EMOTION-AWARE TETRIS v1.0
+          </p>
+        </div>
+
+        <div className="flex-1 flex justify-center z-[10000] relative ">
+          <UserHUD />
+        </div>
       </div>
 
       <TetrisGame />
